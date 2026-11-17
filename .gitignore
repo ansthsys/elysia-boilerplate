@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.env.test
+.env.*.local
+*.log
+coverage
+data/
+*.db
+*.db-shm
+*.db-wal
+openapi.json
+.DS_Store
+.idea

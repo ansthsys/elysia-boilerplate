@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      BETTER_AUTH_SECRET: ci-secret-that-is-at-least-32-characters-long
+      RATE_LIMIT_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+
+      # Follows the driver in src/db/dialect.ts (PostgreSQL, MySQL or SQLite):
+      # switching drivers needs no change here.
+      - name: Start test database
+        run: echo "DATABASE_URL=$(scripts/ci-database.sh)" >> "$GITHUB_ENV"
+
+      - run: bun run test

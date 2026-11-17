@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      elysia: { patterns: ["elysia", "@elysiajs/*"] }
+      drizzle: { patterns: ["drizzle-*"] }
+    ignore:
+      # Elysia 2 is a breaking release: upgrade deliberately (see docs/upgrading.md)
+      - dependency-name: "elysia"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@elysiajs/*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
