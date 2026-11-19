@@ -57,4 +57,14 @@ jobs:
             -e DATABASE_URL=postgresql://postgres:postgres@db:5432/app \
             -e BETTER_AUTH_SECRET=smoke-secret-that-is-not-a-public-value-0123456789 \
             elysia-boilerplate:ci
-          curl --fail --retry 15 --retry-delay 1 --retry-connrefused http://localhost:3000/health
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/health >/dev/null; then
+              echo "health ok"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "health check failed; container logs:"
+          docker logs api
+          exit 1
