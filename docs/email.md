@@ -73,11 +73,11 @@ The email links to `${APP_URL}/api/posts/<id>`; point that template field at you
 | Target                           | Trigger                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------- |
 | Docker / conventional Bun server | `setInterval` in `src/index.ts` (every 10s), plus one final drain on shutdown |
-| Vercel                           | `vercel.json` cron: `GET /api/internal/mail/drain` every 5 minutes            |
+| Vercel                           | `vercel.json` cron: `GET /api/internal/mail/drain`, daily at 03:00 by default |
 
 The endpoint requires `Authorization: Bearer <CRON_SECRET>`; without `CRON_SECRET` it returns 404 (it does not exist). Vercel sends that header automatically when `CRON_SECRET` is set in the project.
 
-Cron frequency depends on the Vercel plan; lower it if password reset latency matters, or drain from a scheduled job you control. The endpoint is idempotent: rows are leased with a `lockId`, so overlapping drains do not send twice.
+**Hobby accounts require a daily cron** — Vercel rejects any expression that runs more often. Pro and Enterprise can lower it (for example `*/5 * * * *`) for faster delivery. On Hobby, use an external scheduler (GitHub Actions, cron-job.org, ...) that calls the same endpoint with the secret if you need lower latency. The endpoint is idempotent: rows are leased with a `lockId`, so overlapping drains do not send twice.
 
 ## Retries and states
 

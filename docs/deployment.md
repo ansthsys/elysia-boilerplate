@@ -88,7 +88,7 @@ Notes:
 3. **Docs are off by default** in production (`OPENAPI_ENABLED`); enable explicitly if they should be public.
 4. **No `bun:sqlite`.** SQLite needs a writable filesystem; use PostgreSQL or MySQL for this target.
 5. **Bundle size.** CI builds and checks the gzip budget (`scripts/build-size.ts`); check the platform's function limit before adding dependencies.
-6. **Mail** is drained by the cron entry in `vercel.json` (`GET /api/internal/mail/drain`, every 5 minutes). Vercel sends `Authorization: Bearer $CRON_SECRET`; without the secret the route is a 404. Adjust the schedule to your plan and latency needs.
+6. **Mail** is drained by the cron entry in `vercel.json` (`GET /api/internal/mail/drain`, daily at 03:00 by default). Hobby accounts require a daily expression; Pro/Enterprise can lower it. Vercel sends `Authorization: Bearer $CRON_SECRET`; without the secret the route is a 404. On Hobby, an external scheduler can call the same endpoint for lower latency.
 
 ## Cold start and the bundle budget
 

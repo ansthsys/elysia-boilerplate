@@ -332,12 +332,12 @@ bun test
 
 ## Deployment
 
-| Target                               | Status            | Notes                                                                                                                       |
-| ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Docker / long-running Bun server** | supported         | multi-stage image runs `dist/`; migrations are a separate release step                                                      |
-| **Single binary**                    | supported         | `bun build --compile`; mount a volume for `local` storage                                                                   |
-| **Vercel (Bun runtime)**             | supported         | default export + `vercel.json`; `s3` storage, Postgres/MySQL over TCP, `TRUST_PROXY=true`, cron drains mail (`CRON_SECRET`) |
-| **Cloudflare Workers / edge**        | **not supported** | workerd lacks Bun APIs; needs D1, R2, Web Crypto and an experimental adapter                                                |
+| Target                               | Status            | Notes                                                                                                                             |
+| ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Docker / long-running Bun server** | supported         | multi-stage image runs `dist/`; migrations are a separate release step                                                            |
+| **Single binary**                    | supported         | `bun build --compile`; mount a volume for `local` storage                                                                         |
+| **Vercel (Bun runtime)**             | supported         | default export + `vercel.json`; `s3` storage, Postgres/MySQL over TCP, `TRUST_PROXY=true`, daily cron drains mail (`CRON_SECRET`) |
+| **Cloudflare Workers / edge**        | **not supported** | workerd lacks Bun APIs; needs D1, R2, Web Crypto and an experimental adapter                                                      |
 
 ```bash
 docker build -t api .
