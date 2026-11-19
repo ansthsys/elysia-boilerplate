@@ -17,3 +17,6 @@ openapi.json
 
 # local AI taste/preferences, not part of the template
 .commandcode/taste/
+
+# local Vercel project link (vercel link)
+/.vercel/
