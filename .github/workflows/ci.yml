@@ -49,12 +49,12 @@ jobs:
 
           docker run --rm --network smoke \
             -e DATABASE_URL=postgresql://postgres:postgres@db:5432/app \
-            -e BETTER_AUTH_SECRET=ci-secret-that-is-at-least-32-characters-long \
+            -e BETTER_AUTH_SECRET=smoke-secret-that-is-not-a-public-value-0123456789 \
             elysia-boilerplate:ci bun dist/db/migrate.js --create-db
 
           docker run -d --name api --network smoke -p 3000:3000 \
             -e NODE_ENV=production \
             -e DATABASE_URL=postgresql://postgres:postgres@db:5432/app \
-            -e BETTER_AUTH_SECRET=ci-secret-that-is-at-least-32-characters-long \
+            -e BETTER_AUTH_SECRET=smoke-secret-that-is-not-a-public-value-0123456789 \
             elysia-boilerplate:ci
           curl --fail --retry 15 --retry-delay 1 --retry-connrefused http://localhost:3000/health
