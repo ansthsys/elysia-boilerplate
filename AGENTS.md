@@ -42,7 +42,7 @@ Elysia **v1.4** REST API (Bun), created from the **elysia-boilerplate** template
   - Import table and column builders only from `#db/dialect`.
   - Use app-generated ids (`newId`).
   - Never use `.returning()`.
-- **Build.** No import-time side effects and no `export *` barrels inside modules. Run `bun run build` when imports or dependencies change; CI enforces the gzip budget (`scripts/build-size.ts`).
+- **Build.** No import-time side effects and no `export *` barrels inside modules. Run `bun run build` when imports or dependencies change; CI enforces the gzip budget (`scripts/build-size.ts`). The root `app.ts` exists only for Vercel (it imports `dist/index.js`); do not import it from application code.
 - **Style.**
   - Use `#` import aliases.
   - Always chain Elysia calls.

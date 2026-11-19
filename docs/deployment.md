@@ -115,6 +115,14 @@ time bun -e "await import('./dist/index.js')"
 
 For Docker and conventional servers the budget still matters for image size and memory, but not for per-request billing.
 
+### Vercel entry
+
+Vercel's Elysia builder transpiles source files but does not rewrite the template's `#` subpath imports, so it cannot run `src/app.ts` directly. The root **`app.ts`** is the Vercel entry: it imports the self-contained `dist/index.js` produced by `bun run build` (the build runs before the function is built).
+
+- `app.ts` is intentionally `@ts-nocheck`: the bundle has no declaration file, and this file is not part of the app or the tests.
+- Local development and tests keep using `src/index.ts`.
+- Do not import `app.ts` from application code.
+
 ## Running more than one instance
 
 Rate limiting is the only stateful piece:

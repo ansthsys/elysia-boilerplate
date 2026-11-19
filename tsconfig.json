@@ -12,8 +12,7 @@
 		"noImplicitOverride": true,
 		"noFallthroughCasesInSwitch": true,
 		"skipLibCheck": true,
-		"noEmit": true,
-		"types": ["bun"]
+		"noEmit": true
 	},
 	"include": ["src", "test", "scripts", "drizzle.config.ts"]
 }

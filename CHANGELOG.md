@@ -16,6 +16,7 @@ Made the template answer the questions a real project asked: date columns, per-s
 
 ### Added
 
+- **Vercel entry**: root `app.ts` imports the prebuilt `dist/index.js` (Vercel's Elysia builder transpiles but does not rewrite the `#` subpath imports). `tsconfig` no longer pins `types: ["bun"]`, which the same builder could not resolve. `.env.local` and `/.vercel/` are ignored.
 - **Email queue (outbox)**: `mail_outbox` table, `MailService.queue`/`drain` (`src/modules/mail/`), retries with backoff, lease-based claiming and a hidden drain endpoint (`/api/internal/mail/drain`, `CRON_SECRET`).
   - Long-running servers drain on an interval; serverless deployments call `GET /api/internal/mail/drain` from any scheduler (`CRON_SECRET`). No cron is shipped in `vercel.json`: Hobby allows only daily and previews do not run crons.
   - Feature example: a member's post queues a review email to every admin (`src/emails/post-pending-review.ts`); approval uses the existing `publishedOn` + `PATCH /api/posts/:id`.
