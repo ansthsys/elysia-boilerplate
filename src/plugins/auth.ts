@@ -1,11 +1,19 @@
 import { Elysia } from 'elysia'
 import { env } from '#config/env'
-import { ForbiddenError, NotFoundError, UnauthorizedError } from '#core/errors'
+import { FeatureDisabledError, ForbiddenError, NotFoundError, UnauthorizedError } from '#core/errors'
 import { auth } from '#lib/auth'
+import { isAuthPathDisabled } from '#lib/auth-features'
 import { hasPermission, hasRole, type Permissions, type Role } from '#shared'
 
-/** Must match the security schemes registered in plugins/openapi.ts. */
-const security: Record<string, string[]>[] = [{ sessionCookie: [] }, { bearerAuth: [] }]
+/**
+ * Must match the security schemes registered in plugins/openapi.ts.
+ * `bearerAuth` is advertised only when the bearer plugin is actually loaded,
+ * otherwise /docs would offer a field that always returns 401.
+ */
+const security: Record<string, string[]>[] = [
+	{ sessionCookie: [] },
+	...(env.AUTH_BEARER_ENABLED ? [{ bearerAuth: [] }] : []),
+]
 
 async function requireSession(headers: Headers) {
 	const session = env.AUTH_ENABLED ? await auth.api.getSession({ headers }) : null
@@ -13,9 +21,9 @@ async function requireSession(headers: Headers) {
 	return { user: session.user, session: session.session }
 }
 
-/** Roles switched off → role/permission protected routes fail closed (403). */
+/** Roles switched off → role/permission protected routes fail closed (403 FEATURE_DISABLED). */
 function assertRolesEnabled() {
-	if (!env.AUTH_ROLES_ENABLED) throw new ForbiddenError('Role-based access control is disabled')
+	if (!env.AUTH_ROLES_ENABLED) throw new FeatureDisabledError('Role-based access control is disabled')
 }
 
 /**
@@ -59,6 +67,7 @@ export const authGuard = new Elysia({ name: 'plugin.auth-guard' }).macro({
  * session, password reset, admin...). Documented in /docs from Better Auth's
  * OpenAPI schema.
  *
+ * Hidden paths come from `#lib/auth-features`; the same list filters `/docs`.
  * `parse: 'none'` leaves the body untouched for Better Auth. A plain
  * `.mount(auth.handler)` is avoided on purpose: mounted at the root it would
  * also catch every unknown route and bypass our 404 response.
@@ -66,7 +75,8 @@ export const authGuard = new Elysia({ name: 'plugin.auth-guard' }).macro({
 export const authRoutes = new Elysia({ name: 'plugin.auth-routes' }).all(
 	'/api/auth/*',
 	({ request }) => {
-		if (!env.AUTH_ENABLED) throw new NotFoundError('Route')
+		const { pathname } = new URL(request.url)
+		if (!env.AUTH_ENABLED || isAuthPathDisabled(pathname)) throw new NotFoundError('Route')
 		return auth.handler(request)
 	},
 	{ parse: 'none', detail: { hide: true } },

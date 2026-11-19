@@ -12,6 +12,7 @@ jobs:
       NODE_ENV: test
       BETTER_AUTH_SECRET: ci-secret-that-is-at-least-32-characters-long
       RATE_LIMIT_ENABLED: "false"
+      CRON_SECRET: ci-cron-secret-at-least-16-characters
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -19,9 +20,41 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
 
+      # Bundle size is a property of this template: fail when it regresses.
+      # No npm script on purpose: humans rarely need this, CI always does.
+      - run: bun run build
+      - run: bun run scripts/build-size.ts
+
       # Follows the driver in src/db/dialect.ts (PostgreSQL, MySQL or SQLite):
       # switching drivers needs no change here.
       - name: Start test database
         run: echo "DATABASE_URL=$(scripts/ci-database.sh)" >> "$GITHUB_ENV"
 
       - run: bun run test
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t elysia-boilerplate:ci .
+
+      # The image ships dist/, so prove the bundled migrator and server work.
+      - name: Smoke test the image
+        run: |
+          docker network create smoke
+          docker run -d --name db --network smoke \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=app \
+            postgres:17-alpine
+          for i in $(seq 1 30); do docker exec db pg_isready -U postgres && break; sleep 1; done
+
+          docker run --rm --network smoke \
+            -e DATABASE_URL=postgresql://postgres:postgres@db:5432/app \
+            -e BETTER_AUTH_SECRET=ci-secret-that-is-at-least-32-characters-long \
+            elysia-boilerplate:ci bun dist/db/migrate.js --create-db
+
+          docker run -d --name api --network smoke -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e DATABASE_URL=postgresql://postgres:postgres@db:5432/app \
+            -e BETTER_AUTH_SECRET=ci-secret-that-is-at-least-32-characters-long \
+            elysia-boilerplate:ci
+          curl --fail --retry 15 --retry-delay 1 --retry-connrefused http://localhost:3000/health

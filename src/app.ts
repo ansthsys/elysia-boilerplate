@@ -4,7 +4,9 @@ import { corsOrigins, env } from '#config/env'
 import { ok } from '#core/http'
 import { adminModule } from '#modules/admin/index'
 import { categoriesModule } from '#modules/categories/index'
+import { filesModule } from '#modules/files/index'
 import { healthModule } from '#modules/health/index'
+import { mailModule } from '#modules/mail/index'
 import { postsModule } from '#modules/posts/index'
 import { authRoutes } from '#plugins/auth'
 import { errorHandler } from '#plugins/error-handler'
@@ -36,12 +38,14 @@ export const app = new Elysia({ name: 'app' })
 	.use(rateLimit)
 	.use(openapiPlugin)
 	.use(authRoutes)
+	.use(mailModule)
 	.get('/', () => ok({ name: env.APP_NAME, version: pkg.version, docs: '/docs' }), {
 		detail: { hide: true },
 	})
 	.use(healthModule)
 	.use(categoriesModule)
 	.use(postsModule)
+	.use(filesModule)
 	.use(adminModule)
 
 export type App = typeof app

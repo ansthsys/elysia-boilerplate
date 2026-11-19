@@ -1,4 +1,5 @@
 import { type TSchema, t } from 'elysia'
+import { idParams } from '#core/schemas'
 import { categories } from '#db/schema/index'
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from '#db/typebox'
 import { successSchema } from '#shared'
@@ -43,7 +44,7 @@ export const CategoryModel = {
 	 */
 	create: t.Object({ name, slug, description: t.Optional(description) }),
 	update: t.Omit(updateCategory, ['id', 'createdAt', 'updatedAt']),
-	params: t.Object({ id: t.String({ format: 'uuid', error: 'Invalid category id' }) }),
+	params: idParams('category'),
 	category: selectCategory,
 	categoryResponse: successSchema(selectCategory),
 	listResponse: successSchema(t.Array(selectCategory)),

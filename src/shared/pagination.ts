@@ -27,8 +27,11 @@ export const PaginationMetaSchema = t.Object({
 export const paginatedSchema = <T extends TSchema>(item: T) =>
 	t.Object({ success: t.Literal(true), data: t.Array(item), meta: PaginationMetaSchema })
 
-/** Query params accepted by paginated endpoints (validated by the API, see apps/api/src/core/pagination.ts). */
-export interface PaginationQuery {
+/**
+ * Raw query values accepted by `resolvePagination`. The validated, coercing
+ * version (`PaginationQuery`) lives in `#core/pagination`, next to Elysia.
+ */
+export interface PaginationParams {
 	page?: number
 	limit?: number
 }
@@ -36,7 +39,7 @@ export type PaginationMeta = Static<typeof PaginationMetaSchema>
 export type PaginatedResponse<T> = { success: true; data: T[]; meta: PaginationMeta }
 
 /** Normalises raw query values into a safe `{ page, limit, offset }`. */
-export function resolvePagination(query: PaginationQuery = {}) {
+export function resolvePagination(query: PaginationParams = {}) {
 	const page = Math.max(1, query.page ?? 1)
 	const limit = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, query.limit ?? PAGINATION_DEFAULT_LIMIT))
 	return { page, limit, offset: (page - 1) * limit }

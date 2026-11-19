@@ -2,7 +2,9 @@ node_modules
 dist
 .env
 .env.test
+.env.production
 .env.*.local
+storage/
 *.log
 coverage
 data/
@@ -12,3 +14,6 @@ data/
 openapi.json
 .DS_Store
 .idea
+
+# local AI taste/preferences, not part of the template
+.commandcode/taste/

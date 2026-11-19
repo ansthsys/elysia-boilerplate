@@ -15,6 +15,32 @@ TypeBox is pinned with `overrides` in `package.json`, because Elysia, drizzle-ty
 
 Dependabot does not propose Elysia major versions; upgrade to Elysia 2 deliberately.
 
+## Upgrading a project from 1.0 to 1.1
+
+The template changed some contracts. Apply them in this order:
+
+1. **Error models.** `errorResponses(...)` now maps each status to its own model and always adds `429`/`500`. Response bodies are unchanged, but regenerated OpenAPI types differ. If a client branches on the envelope, branch on `error.code`: roles switched off now return `FEATURE_DISABLED` (403) instead of `FORBIDDEN`.
+2. **New env vars** (all optional with defaults): `AUTH_SIGN_UP_ENABLED`, `AUTH_PASSWORD_RESET_ENABLED`, `STORAGE_DRIVER`, `STORAGE_LOCAL_PATH`, `STORAGE_PUBLIC_BASE_URL`, `STORAGE_SIGNING_SECRET`, `STORAGE_MAX_FILE_SIZE`, `S3_*`. Copy them from `.env.example`.
+3. **Migrations.** Regenerate for every dialect you support:
+
+   ```bash
+   bun db:generate --name files            # after copying src/db/schema/files.ts
+   bun db:generate --name post_published_on
+   ```
+
+   Switch `src/db/dialect.ts` between drivers to generate each folder.
+4. **Test setup.** `test/setup.ts` now drops and recreates the database. Make sure `NODE_ENV=test` and a disposable `DATABASE_URL` (`*_test`) are set.
+5. **Module layout.** Add a `model.ts` to every module that still declares schemas in `index.ts` (the convention test will tell you which ones). Copy `src/modules/health/model.ts` as the smallest example.
+6. **Tests to copy** (they encode the new rules): `test/conventions.test.ts`, `test/contracts.test.ts`, `test/openapi.test.ts`, `test/error-contract.test.ts`.
+7. **Docker.** The image now runs `dist/`; the migration command is `bun dist/db/migrate.js`. Rebuild the image and update release scripts.
+8. **Storage (optional).** Copy `src/lib/storage/` and `src/modules/files/` if the project needs uploads. They are independent of the rest; a project that does not need them can skip the table and migrations.
+9. **Mail queue (optional).** Copy `src/modules/mail/`, `src/emails/`, the `mail_outbox` schema and its migration, then:
+   - set `CRON_SECRET` and add the cron entry if deploying to Vercel;
+   - keep the interval drain in `src/index.ts` for long-running servers;
+   - switch `src/lib/auth.ts` from sending directly to `MailService.queue`.
+
+Files to focus on: `src/shared/response.ts`, `src/shared/errors.ts`, `src/core/http.ts`, `src/plugins/{auth,error-handler,openapi}.ts`, `src/config/env.ts`, `src/db/dialects/*.ts`, `Dockerfile`.
+
 ## Routine dependency updates
 
 No tools beyond Bun and git are needed:
@@ -70,24 +96,30 @@ Patterns already chosen to keep this list short:
 
 ## AI agent skills
 
-| Skill                               | Use for                                                        | Managed by                                               |
-| ----------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------- |
-| `.agents/skills/elysia-boilerplate` | this template's conventions: layers, rules, new-feature recipe | part of this repository (edit it like code)              |
-| `.agents/skills/elysiajs-v1`        | Elysia 1.x; use this one for this repository                   | vendored snapshot (committed, not in `skills-lock.json`) |
-| `.agents/skills/elysiajs`           | Elysia 2                                                       | `skills` CLI (`skills-lock.json`)                        |
+| Skill                               | Use for                                                      | Managed by                                               |
+| ----------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
+| `.agents/skills/elysia-boilerplate` | the template: layers, schemas, database, auth, email, recipe | part of this repository (edit it like code)              |
+| `.agents/skills/elysiajs-v1`        | Elysia 1.x; use this one for this repository                 | vendored snapshot (committed, not in `skills-lock.json`) |
+| `.agents/skills/elysiajs`           | Elysia 2                                                     | `skills` CLI (`skills-lock.json`)                        |
 
-Both are linked for Claude Code (`.claude/skills`), Command Code (`.commandcode/skills`), and OpenCode and other agents that read `.agents/skills`.
+Template knowledge lives inside the single skill, under `references/`:
+
+| Reference                   | Covers                                                          |
+| --------------------------- | --------------------------------------------------------------- |
+| `references/new-feature.md` | the step-by-step new-module recipe                              |
+| `references/auth.md`        | Better Auth plugins, capability switches, roles and permissions |
+| `references/email.md`       | mail queue, templates, drain triggers and email tests           |
+
+All skills are linked for Claude Code (`.claude/skills`), Command Code (`.commandcode/skills`), and OpenCode and other agents that read `.agents/skills`.
 
 ### Adding knowledge from your own use cases
 
-- **A new topic for the template** (e.g. "add a file upload", "add a background job"): add `references/<topic>.md` to `.agents/skills/elysia-boilerplate` and a row to the **Tasks** table in its `SKILL.md`. One skill stays easy to find and to keep in sync.
-- **A topic that needs its own trigger** (an agent should load it for requests unrelated to features, e.g. "prepare a release"): create `.agents/skills/elysia-boilerplate-<topic>/SKILL.md` and link it:
+Keep one skill for this template; do not create new top-level skill folders for template topics:
 
-  ```bash
-  ln -s ../../.agents/skills/elysia-boilerplate-<topic> .claude/skills/
-  ln -s ../../.agents/skills/elysia-boilerplate-<topic> .commandcode/skills/
-  ```
-
+- **New module/feature convention** → `references/<topic>.md` in `.agents/skills/elysia-boilerplate` plus a row in its **Specialized references** and **Tasks** tables.
+- **Auth topic** (new plugin, provider, permission model) → extend `references/auth.md`.
+- **Email topic** (new template, provider, queue behavior) → extend `references/email.md`.
+- **Any other template topic** — still `references/<topic>.md` plus a row; the skill description already covers this template.
 - **Verify a recipe** by following it in a scratch copy of the repository, then running `bun run typecheck && bun test`. The new-feature recipe was checked this way.
 
 ### Keeping them in sync

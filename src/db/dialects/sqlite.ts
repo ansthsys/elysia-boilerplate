@@ -1,5 +1,5 @@
 import { Database } from 'bun:sqlite'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/bun-sqlite'
@@ -25,6 +25,13 @@ export const column = {
 	boolean: (name: string) => integer(name, { mode: 'boolean' }),
 	integer: (name: string) => integer(name),
 	timestamp: (name: string) => integer(name, { mode: 'timestamp_ms' }),
+	/** SQLite has no date/time types: store the ISO text and let the model validate it. */
+	date: (name: string) => text(name),
+	time: (name: string) => text(name),
+	json: <T>(name: string) => text(name, { mode: 'json' }).$type<T>(),
+	/** Portable enum: see the PostgreSQL dialect for why it is a text column. */
+	enum: <const T extends readonly string[]>(name: string, values: T) =>
+		text(name, { length: Math.max(1, ...values.map((value) => value.length)) }).$type<T[number]>(),
 }
 
 const toPath = (url: string) => url.replace(/^file:/, '')
@@ -53,5 +60,16 @@ export const provisioning = {
 	async create(url: string) {
 		await mkdir(dirname(toPath(url)), { recursive: true })
 		new Database(toPath(url), { create: true }).close()
+	},
+
+	/** Used by the test preload; also removes SQLite's WAL side files. */
+	async drop(url: string) {
+		if (isMemory(url)) return
+		const path = toPath(url)
+		await Promise.all([
+			rm(path, { force: true }),
+			rm(`${path}-wal`, { force: true }),
+			rm(`${path}-shm`, { force: true }),
+		])
 	},
 }

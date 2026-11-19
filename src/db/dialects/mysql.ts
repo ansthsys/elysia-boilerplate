@@ -4,8 +4,11 @@ import {
 	index,
 	int,
 	boolean as myBoolean,
+	date as myDate,
+	json as myJson,
 	mysqlTable,
 	text as myText,
+	time as myTime,
 	uniqueIndex,
 	varchar,
 } from 'drizzle-orm/mysql-core'
@@ -35,6 +38,14 @@ export const column = {
 	integer: (name: string) => int(name),
 	/** DATETIME(3) stored in UTC (the pool uses `timezone: 'Z'`). */
 	timestamp: (name: string) => datetime(name, { mode: 'date', fsp: 3 }),
+	/** Date without time ("YYYY-MM-DD"), kept as a string so it never shifts across timezones. */
+	date: (name: string) => myDate(name, { mode: 'string' }),
+	/** Time of day ("HH:MM:SS"). */
+	time: (name: string) => myTime(name),
+	json: <T>(name: string) => myJson(name).$type<T>(),
+	/** Portable enum: see the PostgreSQL dialect for why it is a varchar. */
+	enum: <const T extends readonly string[]>(name: string, values: T) =>
+		varchar(name, { length: Math.max(1, ...values.map((value) => value.length)) }).$type<T[number]>(),
 }
 
 export function connect<TSchema extends Record<string, unknown>>(url: string, schema: TSchema) {
@@ -69,6 +80,12 @@ export const provisioning = {
 	async create(url: string) {
 		const name = assertIdentifier(provisioning.databaseName(url))
 		await withServer(url, (connection) => connection.query(`create database \`${name}\``))
+	},
+
+	/** Used by the test preload. */
+	async drop(url: string) {
+		const name = assertIdentifier(provisioning.databaseName(url))
+		await withServer(url, (connection) => connection.query(`drop database if exists \`${name}\``))
 	},
 }
 

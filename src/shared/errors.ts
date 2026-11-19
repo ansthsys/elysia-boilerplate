@@ -9,6 +9,8 @@ export const ErrorCode = {
 	BAD_REQUEST: 'BAD_REQUEST',
 	UNAUTHORIZED: 'UNAUTHORIZED',
 	FORBIDDEN: 'FORBIDDEN',
+	/** The deployment switched the feature off (see the `AUTH_*` switches). */
+	FEATURE_DISABLED: 'FEATURE_DISABLED',
 	NOT_FOUND: 'NOT_FOUND',
 	CONFLICT: 'CONFLICT',
 	VALIDATION_ERROR: 'VALIDATION_ERROR',

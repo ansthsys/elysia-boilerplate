@@ -11,7 +11,19 @@ import {
 import { isProduction } from '#config/env'
 import { AppError } from '#core/errors'
 import { logger } from '#lib/logger'
-import { ErrorCode, type ErrorDetail, ErrorResponseSchema } from '#shared'
+import {
+	BadRequestErrorSchema,
+	ConflictErrorSchema,
+	ErrorCode,
+	type ErrorDetail,
+	ForbiddenErrorSchema,
+	InternalServerErrorSchema,
+	NotFoundErrorSchema,
+	ServiceUnavailableErrorSchema,
+	TooManyRequestsErrorSchema,
+	UnauthorizedErrorSchema,
+	ValidationErrorSchema,
+} from '#shared'
 
 type Location = NonNullable<ErrorDetail['location']>
 const LOCATIONS = new Set<string>(['body', 'query', 'params', 'headers', 'cookie'])
@@ -45,11 +57,21 @@ const statusCodes: Record<number, ErrorCode> = {
  *   { success: false, error: { code, message, details?, requestId? } }
  *
  * Registered globally (`as: 'global'`) so it covers every module, and named
- * so modules can `.use()` it for the `ErrorResponse` model without
- * registering the hook twice.
+ * so modules can `.use()` it for the error models without registering the
+ * hook twice. One model per status: see `src/shared/response.ts`.
  */
 export const errorHandler = new Elysia({ name: 'plugin.error-handler' })
-	.model({ ErrorResponse: ErrorResponseSchema })
+	.model({
+		BadRequestError: BadRequestErrorSchema,
+		UnauthorizedError: UnauthorizedErrorSchema,
+		ForbiddenError: ForbiddenErrorSchema,
+		NotFoundError: NotFoundErrorSchema,
+		ConflictError: ConflictErrorSchema,
+		ValidationError: ValidationErrorSchema,
+		TooManyRequestsError: TooManyRequestsErrorSchema,
+		InternalServerError: InternalServerErrorSchema,
+		ServiceUnavailableError: ServiceUnavailableErrorSchema,
+	})
 	.onError({ as: 'global' }, ({ error, status, set, request, path }) => {
 		const requestId = set.headers['x-request-id'] as string | undefined
 		const fail = (httpStatus: number, errorCode: ErrorCode, message: string, details?: ErrorDetail[]) =>

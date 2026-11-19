@@ -5,4 +5,9 @@ export abstract class AdminService {
 	static stats() {
 		return AdminRepository.counts()
 	}
+
+	/** Recipients of moderation emails (posts awaiting approval). */
+	static adminEmails() {
+		return AdminRepository.adminEmails()
+	}
 }
