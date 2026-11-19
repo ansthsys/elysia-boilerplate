@@ -1,29 +1,18 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { admin, bearer, openAPI } from 'better-auth/plugins'
 import { corsOrigins, env, isProduction } from '#config/env'
 import { db } from '#db/client'
 import { dialect } from '#db/dialect'
 import { newId } from '#db/id'
 import { accounts, sessions, users, verifications } from '#db/schema/index'
-import { sendMail } from '#lib/mailer'
-import { ac, DEFAULT_ROLE, roles } from '#shared'
+import { authPlugins } from '#lib/auth-features'
+import { MailService } from '#modules/mail/service'
+import { DEFAULT_ROLE } from '#shared'
 
 /**
- * Better Auth plugins, each behind its own switch.
- *
- * Add a plugin: import it, add an env switch in `config/env.ts`, append it
- * below, and add any columns it needs to `db/schema/auth.ts`.
- * The array is always typed with every plugin, so `auth.api.*` and the
- * session user type stay complete even when a plugin is switched off.
+ * Better Auth instance. Plugins and their switches live in
+ * `#lib/auth-features`: add a plugin there (one entry), not here.
  */
-const plugins = [
-	// Exposes auth.api.generateOpenAPISchema() - merged into /docs.
-	openAPI({ disableDefaultReference: true }),
-	...(env.AUTH_ROLES_ENABLED ? [admin({ ac, roles, defaultRole: DEFAULT_ROLE, adminRoles: ['admin'] })] : []),
-	// Accept `Authorization: Bearer <session token>` (mobile apps, API clients, /docs "Try it").
-	...(env.AUTH_BEARER_ENABLED ? [bearer()] : []),
-]
 
 export const auth = betterAuth({
 	appName: env.APP_NAME,
@@ -53,7 +42,7 @@ export const auth = betterAuth({
 		maxPasswordLength: 128,
 		requireEmailVerification: env.AUTH_REQUIRE_EMAIL_VERIFICATION,
 		sendResetPassword: async ({ user, url }) => {
-			await sendMail({
+			await MailService.queue({
 				to: user.email,
 				subject: 'Reset your password',
 				text: `Reset your password: ${url}`,
@@ -65,7 +54,7 @@ export const auth = betterAuth({
 	emailVerification: {
 		sendOnSignUp: env.AUTH_REQUIRE_EMAIL_VERIFICATION,
 		sendVerificationEmail: async ({ user, url }) => {
-			await sendMail({
+			await MailService.queue({
 				to: user.email,
 				subject: 'Verify your email address',
 				text: `Verify your email: ${url}`,
@@ -87,7 +76,7 @@ export const auth = betterAuth({
 		database: { generateId: () => newId() },
 	},
 
-	plugins,
+	plugins: authPlugins,
 })
 
 export type AuthSession = typeof auth.$Infer.Session

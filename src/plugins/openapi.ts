@@ -1,7 +1,8 @@
 import { openapi } from '@elysiajs/openapi'
 import { Elysia } from 'elysia'
-import { env } from '#config/env'
+import { env, isProduction } from '#config/env'
 import { auth } from '#lib/auth'
+import { isAuthPathDisabled } from '#lib/auth-features'
 import pkg from '../../package.json'
 
 /**
@@ -17,15 +18,19 @@ async function betterAuthDocs() {
 	const { paths, components } = await auth.api.generateOpenAPISchema()
 	const prefixed: Record<string, unknown> = {}
 	for (const [path, operations] of Object.entries(paths)) {
+		const fullPath = `/api/auth${path}`
+		// A switched-off endpoint is a 404 at runtime: never advertise it.
+		if (isAuthPathDisabled(fullPath)) continue
 		for (const operation of Object.values(operations as Record<string, { tags?: string[] }>)) {
 			operation.tags = ['Auth']
 		}
-		prefixed[`/api/auth${path}`] = operations
+		prefixed[fullPath] = operations
 	}
 	return { paths: prefixed, components }
 }
 
-const authDocs = await betterAuthDocs()
+/** Generating Better Auth's schema is not free: skip it entirely when docs are off (production default). */
+const authDocs = env.OPENAPI_ENABLED ? await betterAuthDocs() : { paths: {}, components: {} }
 
 export const openapiPlugin = new Elysia({ name: 'plugin.openapi' }).use(
 	openapi({
@@ -40,7 +45,12 @@ export const openapiPlugin = new Elysia({ name: 'plugin.openapi' }).use(
 					'- success: `{ success: true, data, meta? }`',
 					'- failure: `{ success: false, error: { code, message, details?, requestId? } }`',
 					'',
-					'Validation errors (422) list each invalid field in `error.details` as `{ field, message, location }`.',
+					'Each failure status has its own schema, so the docs do not blur them together:',
+					'- 422 always carries `error.details`, one entry per invalid field (`{ field, message, location }`);',
+					'- 409 carries `details` when the conflict is field-specific (e.g. duplicate slug);',
+					'- 401 / 403 / 404 / 429 / 500 never carry `details`, and each pins `error.code` to the values that status can have.',
+					'',
+					'429 and 500 are documented on every route: the global rate limiter and the error fallthrough can reach any endpoint.',
 					'Protected routes need the session cookie set by `POST /api/auth/sign-in/email`.',
 				].join('\n'),
 			},
@@ -49,17 +59,20 @@ export const openapiPlugin = new Elysia({ name: 'plugin.openapi' }).use(
 				{ name: 'Auth', description: 'Authentication by Better Auth (its own response format)' },
 				{ name: 'Categories', description: 'Example: unpaginated list, admin-only writes (permission macro)' },
 				{ name: 'Posts', description: 'Example: paginated list, ownership + permission rules' },
+				{ name: 'Files', description: 'Example: storage through a driver (local filesystem or S3)' },
 				{ name: 'Admin', description: 'Example: role macro' },
 			],
 			components: {
 				...(authDocs.components as object),
 				securitySchemes: {
-					sessionCookie: { type: 'apiKey', in: 'cookie', name: 'better-auth.session_token' },
-					bearerAuth: {
-						type: 'http',
-						scheme: 'bearer',
-						description: 'Requires AUTH_BEARER_ENABLED=true',
+					sessionCookie: {
+						type: 'apiKey',
+						in: 'cookie',
+						// Better Auth prefixes the cookie with __Secure- when secure cookies are on,
+						// which is exactly when NODE_ENV=production (see src/lib/auth.ts).
+						name: isProduction ? '__Secure-better-auth.session_token' : 'better-auth.session_token',
 					},
+					...(env.AUTH_BEARER_ENABLED ? { bearerAuth: { type: 'http' as const, scheme: 'bearer' as const } } : {}),
 				},
 			},
 			// Better Auth's generated paths are plain OpenAPI objects; the plugin's

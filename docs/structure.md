@@ -2,19 +2,21 @@
 
 ## Where does a new file go?
 
-| You are adding                               | Put it in                                                                                                                   |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| A feature / resource with endpoints          | `src/modules/<feature>/` with `index.ts`, `model.ts`, `service.ts`, then `.use()` it in `src/app.ts`                        |
-| A table                                      | `src/db/schema/<table>.ts`, export it from `schema/index.ts`, add relations in `schema/relations.ts`, run `bun db:generate` |
-| Fake data for a table                        | `src/db/factories/<table>.factory.ts` (export it from `factories/index.ts`)                                                 |
-| Initial data for a table                     | `src/db/seeders/<table>.seeder.ts`, registered in `seeders/index.ts` (order = dependencies)                                 |
-| An environment variable                      | `src/config/env.ts` and `.env.example`                                                                                      |
-| A new kind of error                          | a class in `src/core/errors.ts` (and a code in `src/shared/errors.ts` if clients must tell it apart)                        |
-| A cross-cutting hook (headers, tracing, ...) | `src/plugins/<name>.ts`, `.use()` it in `src/app.ts`                                                                        |
-| A third-party client (S3, Redis, payments)   | `src/lib/<name>.ts`                                                                                                         |
-| A type or rule frontends also need           | `src/shared/` (no imports from `db`, `lib` or `modules`)                                                                    |
-| A permission (resource + actions)            | `src/shared/permissions.ts`                                                                                                 |
-| Tests                                        | `test/<feature>.test.ts`                                                                                                    |
+| You are adding                               | Put it in                                                                                                                              |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| A feature / resource with endpoints          | `src/modules/<feature>/` with `index.ts`, `model.ts`, `service.ts`, then `.use()` it in `src/app.ts`                                   |
+| A table                                      | `src/db/schema/<table>.ts`, export it from `schema/index.ts`, add relations in `schema/relations.ts`, run `bun db:generate`            |
+| Fake data for a table                        | `src/db/factories/<table>.factory.ts` (export it from `factories/index.ts`)                                                            |
+| Initial data for a table                     | `src/db/seeders/<table>.seeder.ts`, registered in `seeders/index.ts` (order = dependencies)                                            |
+| An environment variable                      | `src/config/env.ts` and `.env.example`                                                                                                 |
+| A new kind of error                          | a class in `src/core/errors.ts` (and a code in `src/shared/errors.ts` if clients must tell it apart)                                   |
+| A cross-cutting hook (headers, tracing, ...) | `src/plugins/<name>.ts`, `.use()` it in `src/app.ts`                                                                                   |
+| A third-party client (Redis, payments, ...)  | `src/lib/<name>.ts`                                                                                                                    |
+| File/object storage                          | use `storage.disk()` from `#lib/storage`; a new driver goes in `src/lib/storage/<driver>.ts` and is registered in `src/lib/storage.ts` |
+| An email triggered by a feature              | template in `src/emails/<event>.ts`; send with `MailService.queue` from the service (see [email.md](email.md))                         |
+| A type or rule frontends also need           | `src/shared/` (no imports from `db`, `lib` or `modules`)                                                                               |
+| A permission (resource + actions)            | `src/shared/permissions.ts`                                                                                                            |
+| Tests                                        | `test/<feature>.test.ts`                                                                                                               |
 
 ## Layers
 
@@ -28,6 +30,20 @@ index.ts (controller)  →  service.ts (business logic)  →  repository.ts (dat
 | **Service** `service.ts`       | business rules and orchestration: "404 before 403", ownership, "the referenced category must exist", duplicates, pagination math, calling other services | import `db`/Drizzle or Elysia; build HTTP responses                          |
 | **Repository** `repository.ts` | every ORM query of the module; returns rows or `undefined`; translates driver errors into data errors (`UniqueConstraintError`)                          | decide what is an error for the user (no `NotFoundError`), apply permissions |
 | **Model** `model.ts`           | request/response schemas (`XModel`) and their types (`XModel['create']`), derived from the tables via `#db/typebox`                                      | contain logic                                                                |
+
+### `model.ts` has four sections, in this order
+
+1. **Table-derived** — `createInsertSchema` / `createUpdateSchema` / `createSelectSchema` plus the `refine` map.
+2. **Composed responses** — a row plus relation subsets (`PostSchema` with `author`/`category`).
+3. **Query filters** — `listQuery`: pagination plus the filters this endpoint owns (`categoryId`, `createdAfter`).
+4. **No-table shapes** — health, admin stats: hand-written, but still here.
+
+Rules:
+
+- **Every module has `model.ts`.** `index.ts` declares no schemas; `test/conventions.test.ts` fails otherwise.
+- **A filter used by one endpoint lives in that module's model.** Shared pagination stays in `#core/pagination`; `idParams` is shared from `#core/schemas`.
+- **Never name it `schema.ts`.** `schema` already means database tables (`src/db/schema/`).
+- If one module grows past ~250 lines, split into `model/index.ts` + per-concern files — not into a second naming scheme.
 
 Example of the split, from `posts`:
 

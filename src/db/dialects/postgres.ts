@@ -1,10 +1,13 @@
 import { sql } from 'drizzle-orm'
 import {
 	index,
+	jsonb,
 	boolean as pgBoolean,
+	date as pgDate,
 	integer as pgInteger,
 	pgTable,
 	text as pgText,
+	time as pgTime,
 	timestamp as pgTimestamp,
 	uniqueIndex,
 	varchar,
@@ -37,6 +40,18 @@ export const column = {
 	boolean: (name: string) => pgBoolean(name),
 	integer: (name: string) => pgInteger(name),
 	timestamp: (name: string) => pgTimestamp(name, { mode: 'date', precision: 3, withTimezone: true }),
+	/** Date without time ("YYYY-MM-DD"), kept as a string so it never shifts across timezones. */
+	date: (name: string) => pgDate(name, { mode: 'string' }),
+	/** Time of day ("HH:MM:SS"). */
+	time: (name: string) => pgTime(name),
+	json: <T>(name: string) => jsonb(name).$type<T>(),
+	/**
+	 * Portable enum: a varchar plus the allowed values in TypeScript.
+	 * PostgreSQL native enums are not used because SQLite has none.
+	 * Validate the values in the model with `t.Union([t.Literal('a'), ...])`.
+	 */
+	enum: <const T extends readonly string[]>(name: string, values: T) =>
+		varchar(name, { length: Math.max(1, ...values.map((value) => value.length)) }).$type<T[number]>(),
 }
 
 export function connect<TSchema extends Record<string, unknown>>(url: string, schema: TSchema) {
@@ -68,6 +83,12 @@ export const provisioning = {
 	async create(url: string) {
 		const name = assertIdentifier(provisioning.databaseName(url))
 		await withMaintenance(url, (sql) => sql.unsafe(`create database "${name}"`))
+	},
+
+	/** Used by the test preload; `force` closes other connections. */
+	async drop(url: string) {
+		const name = assertIdentifier(provisioning.databaseName(url))
+		await withMaintenance(url, (sql) => sql.unsafe(`drop database if exists "${name}" with (force)`))
 	},
 }
 

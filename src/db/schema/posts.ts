@@ -14,6 +14,8 @@ export const posts = table(
 			.notNull()
 			// restrict: a category that still has posts cannot be deleted (see CategoryService.remove)
 			.references(() => categories.id, { onDelete: 'restrict' }),
+		/** Date-only column example: stored as text on every dialect, never shifted by a timezone. */
+		publishedOn: column.date('published_on'),
 		authorId: column
 			.foreignId('author_id')
 			.notNull()

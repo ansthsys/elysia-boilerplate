@@ -14,6 +14,9 @@ import { TooManyRequestsError } from '#core/errors'
  * With TRUST_PROXY=true it is the first `X-Forwarded-For` entry instead -
  * only enable that behind a proxy that sets the header, otherwise clients
  * can spoof it.
+ *
+ * Outside a Bun `listen` (Vercel functions) there is no socket, so the header
+ * fallbacks are required; without them every client would share one bucket.
  */
 let server: Server<unknown> | null = null
 
@@ -33,7 +36,9 @@ export const rateLimit = new Elysia({ name: 'plugin.rate-limit' })
 					const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
 					if (forwarded) return forwarded
 				}
-				return socket?.requestIP(request)?.address ?? 'unknown'
+				const address = socket?.requestIP(request)?.address
+				if (address) return address
+				return request.headers.get('x-real-ip') ?? 'unknown'
 			},
 			skip: (request) => {
 				if (!env.RATE_LIMIT_ENABLED || request.method === 'OPTIONS') return true

@@ -1,8 +1,8 @@
-import { Elysia, t } from 'elysia'
+import { Elysia } from 'elysia'
 import { errorResponses, ok } from '#core/http'
 import { authGuard } from '#plugins/auth'
 import { errorHandler } from '#plugins/error-handler'
-import { successSchema } from '#shared'
+import { AdminModel } from './model'
 import { AdminService } from './service'
 
 /**
@@ -16,7 +16,7 @@ export const adminModule = new Elysia({ prefix: '/api/admin', detail: { tags: ['
 	.get('/stats', async () => ok(await AdminService.stats()), {
 		role: 'admin',
 		response: {
-			200: successSchema(t.Object({ users: t.Integer(), posts: t.Integer(), categories: t.Integer() })),
+			200: AdminModel.statsResponse,
 			...errorResponses(401, 403),
 		},
 		detail: { summary: 'Dashboard counters', description: 'Requires the `admin` role.' },

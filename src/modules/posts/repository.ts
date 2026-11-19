@@ -1,4 +1,4 @@
-import { and, desc, eq, type SQL, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, lte, type SQL, sql } from 'drizzle-orm'
 import { db } from '#db/client'
 import { newId } from '#db/id'
 import { type NewPost, posts } from '#db/schema/index'
@@ -7,6 +7,9 @@ export interface PostFilters {
 	categoryId?: string
 	authorId?: string
 	search?: string
+	/** ISO date-times, already validated by the query schema. */
+	createdAfter?: string
+	createdBefore?: string
 }
 
 /** Relations returned with every post. */
@@ -27,6 +30,8 @@ function toWhere(filters: PostFilters): SQL | undefined {
 	if (filters.authorId) conditions.push(eq(posts.authorId, filters.authorId))
 	// lower() + LIKE behaves the same on PostgreSQL, MySQL and SQLite.
 	if (filters.search) conditions.push(sql`lower(${posts.title}) like ${likePattern(filters.search)} escape '!'`)
+	if (filters.createdAfter) conditions.push(gte(posts.createdAt, new Date(filters.createdAfter)))
+	if (filters.createdBefore) conditions.push(lte(posts.createdAt, new Date(filters.createdBefore)))
 	return conditions.length ? and(...conditions) : undefined
 }
 

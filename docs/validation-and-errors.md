@@ -18,7 +18,27 @@ Declaring `response` does two things:
 .post('', async ({ body, user, status }) => status(201, ok(await PostService.create(body, user))), { … })
 ```
 
-`errorResponses(...)` documents the error statuses a route can return, using the `ErrorResponse` model. This is what makes `error.status` and `error.value` typed in Eden.
+`errorResponses(...)` documents the error statuses a route can return. It maps **each status to its own named model** registered by the error-handler plugin, and always adds `429` and `500` (the global limiter and the error fallthrough can hit any route). That is what makes `error.status` and `error.value` typed in Eden — and what lets `/docs` show that a 422 has `details` while a 401 does not.
+
+```ts
+response: { 200: ..., ...errorResponses(401, 404, 422) }
+// → { 200, 401: 'UnauthorizedError', 404: 'NotFoundError', 422: 'ValidationError',
+//     429: 'TooManyRequestsError', 500: 'InternalServerError' }
+```
+
+| Status | Model                     | `error.code`                      | `details`                                  |
+| ------ | ------------------------- | --------------------------------- | ------------------------------------------ |
+| 400    | `BadRequestError`         | `BAD_REQUEST`                     | optional                                   |
+| 401    | `UnauthorizedError`       | `UNAUTHORIZED`                    | —                                          |
+| 403    | `ForbiddenError`          | `FORBIDDEN` or `FEATURE_DISABLED` | —                                          |
+| 404    | `NotFoundError`           | `NOT_FOUND`                       | —                                          |
+| 409    | `ConflictError`           | `CONFLICT`                        | optional                                   |
+| 422    | `ValidationError`         | `VALIDATION_ERROR`                | **required** (one entry per invalid field) |
+| 429    | `TooManyRequestsError`    | `TOO_MANY_REQUESTS`               | —                                          |
+| 500    | `InternalServerError`     | `INTERNAL_SERVER_ERROR`           | —                                          |
+| 503    | `ServiceUnavailableError` | `SERVICE_UNAVAILABLE`             | —                                          |
+
+Two tests keep this honest: `test/openapi.test.ts` checks the generated spec (one model per status, `$ref` per status, 429/500 everywhere) and `test/error-contract.test.ts` validates the **actual** body of every reachable error path against those models. If the handler and the docs drift, CI fails.
 
 ## Custom error classes
 
@@ -29,11 +49,14 @@ Throw these from services, macros or hooks - never from repositories, which only
 | `BadRequestError`                                                         | 400    | `BAD_REQUEST`         |
 | `UnauthorizedError`                                                       | 401    | `UNAUTHORIZED`        |
 | `ForbiddenError`                                                          | 403    | `FORBIDDEN`           |
+| `FeatureDisabledError`                                                    | 403    | `FEATURE_DISABLED`    |
 | `NotFoundError('Post')`                                                   | 404    | `NOT_FOUND`           |
 | `ConflictError(message, details?)`                                        | 409    | `CONFLICT`            |
 | `UnprocessableEntityError.field('categoryId', 'Category does not exist')` | 422    | `VALIDATION_ERROR`    |
 | `TooManyRequestsError`                                                    | 429    | `TOO_MANY_REQUESTS`   |
 | `ServiceUnavailableError`                                                 | 503    | `SERVICE_UNAVAILABLE` |
+
+`FeatureDisabledError` is used when a capability is switched off (`AUTH_ROLES_ENABLED=false`): the status is still 403, but the client can tell "this deployment does not have it" from "you are not allowed" by the code.
 
 These are mapped to the same envelope too:
 
@@ -68,6 +91,9 @@ Pitfalls this setup avoids (see the comments in the code):
 - **Refinements must be functions.** A refinement given as a schema object replaces the column completely, including its nullability.
 - **Nullable refined columns.** drizzle-typebox types a refined nullable column as _required_, although at runtime it is optional. Wrap it in `t.Optional(...)` in `create` (see `categories/model.ts`).
 - **Assign before wrapping.** Store the result of `createInsertSchema` in a variable before wrapping it in `t.Omit`/`t.Object`. This avoids "type instantiation is excessively deep".
+- **Dates.** `column.date`/`column.timestamp` come back as unions (`string | null`, `Date | string | number`). Refine date-only columns with `t.String({ format: 'date' })` (see `posts.publishedOn`); ISO strings are accepted by the timestamp schemas, so responses validate.
+- **Nested relations cannot be derived.** For a response that embeds another table, compose the object in `model.ts` and `test/contracts.test.ts` will keep it in sync with the repository projection.
+- **Spread only composes.** `t.Object({ ...schema.properties })` builds a new object and loses object-level options and `$ref`s. Use `t.Omit`/`t.Pick` on the variable when you only want to remove fields.
 
 ## Validation messages for the frontend
 

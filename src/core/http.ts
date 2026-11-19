@@ -15,16 +15,42 @@ export const paginated = <T>(data: T[], meta: PaginationMeta) => ({
 	meta,
 })
 
-type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 | 503
+/**
+ * Error status → the named model registered by the error-handler plugin.
+ * One model per status, not one shared `ErrorResponse`: the generated docs
+ * then show that a 422 has `details` and a 401 does not, and Eden narrows
+ * `error.value` by status.
+ */
+const ERROR_MODELS = {
+	400: 'BadRequestError',
+	401: 'UnauthorizedError',
+	403: 'ForbiddenError',
+	404: 'NotFoundError',
+	409: 'ConflictError',
+	422: 'ValidationError',
+	429: 'TooManyRequestsError',
+	500: 'InternalServerError',
+	503: 'ServiceUnavailableError',
+} as const
+
+export type ErrorStatus = keyof typeof ERROR_MODELS
+
+/**
+ * 429 and 500 are reachable from *every* route (global rate limit, any
+ * unhandled throw), so they are always documented. Omitting them produced a
+ * spec that lied about what clients can receive.
+ */
+const ALWAYS_DOCUMENTED = [429, 500] as const satisfies readonly ErrorStatus[]
 
 /**
  * Documents the error responses a route can produce (OpenAPI + Eden types).
- * Every status points to the `ErrorResponse` model registered by the
- * error-handler plugin, so the module must `.use(errorHandler)`.
+ * The module must `.use(errorHandler)` for these models to resolve.
  *
  *   response: { 200: ..., ...errorResponses(401, 404, 422) }
  */
 export const errorResponses = <const S extends readonly ErrorStatus[]>(...statuses: S) =>
-	Object.fromEntries(statuses.map((status) => [status, 'ErrorResponse'])) as {
-		[K in S[number]]: 'ErrorResponse'
+	Object.fromEntries(
+		[...new Set<ErrorStatus>([...statuses, ...ALWAYS_DOCUMENTED])].map((status) => [status, ERROR_MODELS[status]]),
+	) as {
+		[K in S[number] | (typeof ALWAYS_DOCUMENTED)[number]]: (typeof ERROR_MODELS)[K]
 	}

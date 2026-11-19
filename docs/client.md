@@ -7,9 +7,56 @@ The API exports two entry points (see `exports` in `package.json`):
 | `elysia-boilerplate/client` | `type App` (for Eden) and every shared **type** (`ErrorResponse`, `PaginationMeta`, `Role`, ...) | none: type only                             |
 | `elysia-boilerplate/shared` | client-safe values: `ErrorCode`, `hasPermission`, `hasRole`, `roles`, pagination constants       | small: TypeBox + Better Auth access control |
 
-Pick the setup that matches where the frontend lives.
+`ErrorResponse` is a union of the per-status error bodies (`BadRequestError` … `ServiceUnavailableError`). In the generated OpenAPI types, the same information appears as one schema per status; regenerate the types after upgrading.
 
-## 1. Backend and frontend side by side (`./be` + `./fe`)
+Choose the setup that matches where the frontend lives:
+
+| Setup                                  | Types come from                            | Use when                                                                   |
+| -------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------- |
+| **Bun workspace monorepo**             | `treaty<App>` from the package export      | backend and frontend in one repo (recommended)                             |
+| **Side-by-side folders, no workspace** | `treaty<App>` via `tsconfig` paths         | quick start, two installs                                                  |
+| **Separate repository, Eden**          | `treaty<App>`, backend as a dev dependency | independent deploys, types without a running server                        |
+| **Separate repository, OpenAPI**       | generated `api.d.ts`                       | frontend must not depend on the backend package, or is not TypeScript/Eden |
+
+## 1. Monorepo (Bun workspace)
+
+```
+my-project/
+├── package.json      { "private": true, "workspaces": ["be", "fe"] }
+├── be/               this repository (package name: elysia-boilerplate)
+└── fe/               your frontend
+```
+
+```bash
+# at the workspace root, once
+bun install
+```
+
+```jsonc
+// fe/package.json
+{
+	"dependencies": {
+		"elysia-boilerplate": "workspace:*",
+		"@elysiajs/eden": "1.4.9"
+	}
+}
+```
+
+```ts
+// fe/src/lib/api.ts
+import { treaty } from '@elysiajs/eden'
+import type { App } from 'elysia-boilerplate/client'
+
+export const api = treaty<App>(import.meta.env.VITE_API_URL, {
+	fetch: { credentials: 'include' }, // send the Better Auth session cookie
+})
+```
+
+This is the least fragile setup: one install hoists a **single** `elysia` (and TypeBox) copy, so `treaty<App>` compares the same types on both sides. No `paths` override is needed. Keep both packages `private: true`; the workspace root is not published.
+
+## 2. Backend and frontend side by side (no workspace)
+
+Use this if you do not want a workspace and accept two installs (and the `elysia` path override).
 
 ```
 my-project/
@@ -56,7 +103,7 @@ Run `bun install` in `be/` once, because the frontend reads types from `be/node_
 
 > Alternative: make `my-project/` a Bun workspace (`"workspaces": ["be", "fe"]`). A single install then shares one `elysia` and the `paths` entry for `elysia` is not needed.
 
-## 2. Frontend in a separate repository
+## 3. Frontend in a separate repository
 
 ### Option A: Eden, with the backend as a dev dependency
 
@@ -108,12 +155,32 @@ import createClient from 'openapi-fetch'
 import type { components, paths } from './api'
 
 export const api = createClient<paths>({ baseUrl: 'https://api.example.com', credentials: 'include' })
-export type ErrorResponse = components['schemas']['ErrorResponse']
+export type ErrorResponse = components['schemas'][keyof Pick<
+	components['schemas'],
+	| 'BadRequestError'
+	| 'UnauthorizedError'
+	| 'ForbiddenError'
+	| 'NotFoundError'
+	| 'ConflictError'
+	| 'ValidationError'
+	| 'TooManyRequestsError'
+	| 'InternalServerError'
+	| 'ServiceUnavailableError'
+>]
 
 const { data, error, response } = await api.POST('/api/posts', { body: { title, content, categoryId } })
 ```
 
 Regenerate `api.d.ts` whenever the API changes (for example in CI).
+
+### Type-checking checklist (separate repository)
+
+- **Use `moduleResolution: "bundler"` (or `"nodenext"`)** in the frontend. The backend's `App` type references internal modules that import through `#` aliases; TypeScript resolves those from the backend package's own `package.json#imports`. Without that resolution mode you get `Cannot find module '#db/client'`.
+- **Install the backend package itself**, not only `@elysiajs/eden`. Its types depend on `elysia`, TypeBox, Better Auth and Drizzle types.
+- **One Elysia copy.** If `treaty<App>` fails with "two different types", add the `paths` override shown in Option A (or switch to a workspace, which hoists a single copy).
+- **Pin and update.** Keep the backend version fixed; run `bun update elysia-boilerplate` deliberately and regenerate/typecheck.
+- **Import boundaries.** `elysia-boilerplate/client` is type-only (erased at build). `elysia-boilerplate/shared` has runtime helpers; it never pulls server code. Do not import from the backend's `src/` directly.
+- **CI.** Typecheck the frontend against the pinned backend version; that is the cheapest way to catch an API change before deployment.
 
 ## Calling the API
 
