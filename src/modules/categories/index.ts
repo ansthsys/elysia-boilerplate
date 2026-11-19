@@ -14,7 +14,7 @@ export const categoriesModule = new Elysia({ prefix: '/api/categories', detail: 
 	.use(errorHandler)
 	.use(authGuard)
 	.get('', async () => ok(await CategoryService.list()), {
-		response: { 200: CategoryModel.listResponse },
+		response: { 200: CategoryModel.listResponse, ...errorResponses() },
 		detail: {
 			summary: 'List categories',
 			description: 'Returns every category, sorted by name. Not paginated: the set is small and bounded.',

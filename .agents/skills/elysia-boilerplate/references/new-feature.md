@@ -10,6 +10,7 @@ Each code block starting with a `// path` comment is a whole new file. Blocks st
 
 ## Checklist
 
+0. Read `test/conventions.test.ts`. It encodes the rules below and runs on every `bun test`.
 1. Table: `src/db/schema/<feature>.ts`
 2. Export it, and add relations
 3. Migration: `bun db:generate --name add_<feature> && bun db:migrate`
@@ -95,10 +96,13 @@ export const statements = {
 
 ## 5. Model
 
+`model.ts` always has four sections, in this order: table-derived schemas, composed responses (row + relations), query filters, and shapes for endpoints without a table. Do not put schemas in `index.ts`, and do not rename this file to `schema.ts` (`schema` means database tables here).
+
 ```ts
 // src/modules/tasks/model.ts
 import { type TSchema, t } from 'elysia'
 import { PaginationQuery } from '#core/pagination'
+import { idParams } from '#core/schemas'
 import { tasks } from '#db/schema/index'
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from '#db/typebox'
 import { paginatedSchema, successSchema } from '#shared'
@@ -119,7 +123,8 @@ export const TaskModel = {
 	/** Whitelist: `ownerId` comes from the session, never from the client. */
 	create: t.Object({ title, notes: t.Optional(notes), done }),
 	update: t.Omit(updateTask, ['id', 'ownerId', 'createdAt', 'updatedAt']),
-	params: t.Object({ id: t.String({ format: 'uuid', error: 'Invalid task id' }) }),
+	params: idParams('task'),
+	/** Pagination + the filters this endpoint owns. A filter used only here stays here. */
 	listQuery: t.Object({
 		...PaginationQuery.properties,
 		done: t.Optional(t.Boolean({ description: 'Filter by completion' })),
@@ -134,6 +139,12 @@ export type TaskModel = {
 	[K in keyof typeof TaskModel]: (typeof TaskModel)[K]['static']
 }
 ```
+
+Date columns:
+
+- `column.date()` is a string (`YYYY-MM-DD`) on every driver. Refine it with `t.String({ format: 'date' })` (do not spread the column: it would bring `null` back); see `posts.publishedOn`.
+- `column.timestamp()` is a `Date` in app code and an ISO string on the wire; `drizzle-typebox` already accepts both, so no refinement is needed.
+- `column.enum(name, values)` is a varchar + TS union, not a native enum. Validate writable values with `t.Union([t.Literal('a'), ...])`.
 
 ## 6. Repository
 
@@ -334,8 +345,11 @@ Route checklist:
   - 404 for `:id` routes;
   - 409 for unique fields;
   - 422 whenever there is a body, query or params schema.
+  - `429` and `500` are added automatically; `errorResponses()` maps each status to its own model.
 - **Public routes:** leave out `auth: true`.
 - **Role- or permission-wide rules:** use `role: 'admin'` or `permission: {...}` instead of `auth: true`.
+- **Response relations:** the repository projection and the composed schema must expose the same keys; `test/contracts.test.ts` checks the example.
+- **Files:** never call the filesystem or an S3 SDK from a module. Use `storage.disk()` from `#lib/storage`.
 
 ## 9. Factory
 

@@ -14,6 +14,8 @@ export const statements = {
 	/** Moderation: edit/delete posts of other users (authors always manage their own). */
 	post: ['update', 'delete'],
 	category: ['create', 'update', 'delete'],
+	/** Moderation of files uploaded by other users. */
+	file: ['delete'],
 } as const
 
 export const ac = createAccessControl(statements)
@@ -28,6 +30,7 @@ export const roles = {
 		...adminAc.statements,
 		post: ['update', 'delete'],
 		category: ['create', 'update', 'delete'],
+		file: ['delete'],
 	}),
 }
 

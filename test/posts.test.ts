@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test'
+import { eq } from 'drizzle-orm'
+import { app } from '#app'
+import { db } from '#db/client'
 import { postFactory } from '#db/factories/index'
+import { mailOutbox } from '#db/schema/index'
 import { actingAs, api, createCategory } from './helpers'
 
 const validPost = (categoryId: string) => ({
@@ -55,6 +59,32 @@ describe('GET /api/posts (pagination)', () => {
 			{ field: 'page', message: 'page must be an integer', location: 'query' },
 		])
 	})
+
+	it('filters by creation date and rejects an invalid date-time', async () => {
+		const { user } = await actingAs()
+		const category = await createCategory()
+		await postFactory.create({ authorId: user.id, categoryId: category.id })
+
+		const beforeEpoch = await api.api.posts.get({
+			query: { categoryId: category.id, createdBefore: '2000-01-01T00:00:00Z' },
+		})
+		expect(beforeEpoch.data?.data).toHaveLength(0)
+
+		const wideRange = await api.api.posts.get({
+			query: {
+				categoryId: category.id,
+				createdAfter: '2000-01-01T00:00:00Z',
+				createdBefore: '2999-01-01T00:00:00Z',
+			},
+		})
+		expect(wideRange.data?.data.length).toBeGreaterThan(0)
+
+		const invalid = await api.api.posts.get({
+			query: { createdAfter: 'not-a-date' as unknown as string },
+		})
+		expect(invalid.status).toBe(422)
+		expect(invalid.error?.value.error.details?.[0]?.field).toBe('createdAfter')
+	})
 })
 
 describe('POST /api/posts', () => {
@@ -90,6 +120,40 @@ describe('POST /api/posts', () => {
 
 		expect(status).toBe(422)
 		expect(error?.value.error.details?.map((detail) => detail.field)).toEqual(['title', 'content', 'categoryId'])
+	})
+
+	it('accepts a date-only column and rejects an invalid date (422)', async () => {
+		const { headers } = await actingAs()
+		const category = await createCategory()
+
+		const created = await api.api.posts.post({ ...validPost(category.id), publishedOn: '2026-01-31' }, { headers })
+		expect(created.status).toBe(201)
+		// Assert the wire value: a date-only column must not become a timestamp.
+		const id = created.data?.data.id as string
+		const raw = await app.handle(new Request(`http://localhost/api/posts/${id}`))
+		const body = (await raw.json()) as { data: { publishedOn: unknown } }
+		expect(body.data.publishedOn).toBe('2026-01-31')
+
+		const invalid = await api.api.posts.post({ ...validPost(category.id), publishedOn: '31/01/2026' }, { headers })
+		expect(invalid.status).toBe(422)
+		expect(invalid.error?.value.error.details?.[0]?.field).toBe('publishedOn')
+	})
+
+	it('queues a review email to admins when a member creates an unpublished post', async () => {
+		const admin = await actingAs('admin')
+		const member = await actingAs('member')
+		const category = await createCategory()
+
+		const created = await api.api.posts.post(validPost(category.id), { headers: member.headers })
+		expect(created.status).toBe(201)
+
+		const title = created.data?.data.title as string
+		const queued = await db
+			.select({ to: mailOutbox.to, subject: mailOutbox.subject })
+			.from(mailOutbox)
+			.where(eq(mailOutbox.to, admin.user.email))
+
+		expect(queued.some((mail) => mail.subject.includes(title))).toBe(true)
 	})
 })
 

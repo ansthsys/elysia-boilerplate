@@ -1,9 +1,9 @@
 {
 	"name": "elysia-boilerplate",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"private": true,
 	"type": "module",
-	"description": "Production-ready Elysia v1 REST API boilerplate: Better Auth, Drizzle (PostgreSQL/MySQL/SQLite), end-to-end type safety.",
+	"description": "Production-ready Elysia v1 REST API boilerplate for Bun: Better Auth, Drizzle (PostgreSQL/MySQL/SQLite), driver-based storage, end-to-end type safety. Docker, conventional servers and Vercel (Bun runtime).",
 	"license": "MIT",
 	"imports": {
 		"#app": "./src/app.ts",
@@ -17,7 +17,7 @@
 	"scripts": {
 		"dev": "bun run --watch src/index.ts",
 		"start": "NODE_ENV=production bun run src/index.ts",
-		"build": "bun build --target=bun --outdir=dist src/index.ts",
+		"build": "bun build --target=bun --minify --sourcemap=external --outdir=dist src/index.ts src/db/migrate.ts src/db/seed.ts",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",

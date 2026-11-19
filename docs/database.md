@@ -16,13 +16,35 @@ CI follows the same line. `scripts/ci-database.sh` reads the driver from `src/db
 
 Everything dialect-specific lives in `src/db/dialects/*.ts`. Each file exports the same names, so schemas, repositories and services never change:
 
-| Export                                                                                                        | Purpose                                              |
-| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `table`, `index`, `uniqueIndex`                                                                               | `pgTable` / `mysqlTable` / `sqliteTable` and friends |
-| `column.id()`, `.foreignId()`, `.string(name, length)`, `.text()`, `.boolean()`, `.integer()`, `.timestamp()` | equivalent column types on every driver              |
-| `connect(url, schema)`                                                                                        | `{ db, ping, migrate, close }`                       |
-| `dialect`                                                                                                     | names used by drizzle-kit and Better Auth            |
-| `AnyTable`                                                                                                    | table type of the active dialect (used by factories) |
+| Export                          | Purpose                                              |
+| ------------------------------- | ---------------------------------------------------- |
+| `table`, `index`, `uniqueIndex` | `pgTable` / `mysqlTable` / `sqliteTable` and friends |
+| `column.*` (see below)          | equivalent column types on every driver              |
+| `connect(url, schema)`          | `{ db, ping, migrate, close }`                       |
+| `dialect`                       | names used by drizzle-kit and Better Auth            |
+| `AnyTable`                      | table type of the active dialect (used by factories) |
+
+### Column builders
+
+| Builder                 | PostgreSQL                              | MySQL              | SQLite                     |
+| ----------------------- | --------------------------------------- | ------------------ | -------------------------- |
+| `id(name?)`             | `varchar(36)` PK, app-generated UUID v7 | same               | `text(36)`                 |
+| `foreignId(name)`       | `varchar(36)`                           | same               | `text(36)`                 |
+| `string(name, length?)` | `varchar(length)`                       | same               | `text(length)`             |
+| `text(name)`            | `text`                                  | `text`             | `text`                     |
+| `boolean(name)`         | `boolean`                               | `tinyint(1)`       | `integer(mode: 'boolean')` |
+| `integer(name)`         | `integer`                               | `int`              | `integer`                  |
+| `timestamp(name)`       | `timestamptz(3)`                        | `datetime(3)`, UTC | `integer(timestamp_ms)`    |
+| `date(name)`            | `date` **as string** (`YYYY-MM-DD`)     | same               | `text`                     |
+| `time(name)`            | `time`                                  | `time`             | `text`                     |
+| `json(name)`            | `jsonb`                                 | `json`             | `text(mode: 'json')`       |
+| `enum(name, values)`    | `varchar(len)` + TS union               | same               | `text(len)` + TS union     |
+
+- **Dates are strings, not `Date`.** `column.date()` uses `mode: 'string'` on PostgreSQL/MySQL and `text` on SQLite, so `2026-01-31` never shifts because of a timezone. `drizzle-typebox` exposes it as `string | null`; refine it with `t.String({ format: 'date' })` in the model (see `posts.publishedOn`). Eden parses the `date` format back into a `Date` on the client.
+- **Enums are not native.** PostgreSQL native enums are not used because SQLite has none. `column.enum('disk', ['local', 's3'])` stores a varchar and narrows the TypeScript type; validate the allowed values in the model with `t.Union([t.Literal('local'), t.Literal('s3')])` when the field is writable.
+- **Deliberately absent:** `decimal`, `bigint`, arrays. Their behaviour differs enough across drivers that a portable wrapper would be a lie; add them to all three dialects if your project needs them.
+
+`test/conventions.test.ts` asserts that all three dialects expose the same column keys.
 
 Rules that keep repository code portable:
 
@@ -42,6 +64,8 @@ The full test suite passes on all three drivers.
 | `bun db:generate --name <name>` | writes SQL to `drizzle/<driver>/` from schema changes                        |
 | `bun db:migrate`                | applies pending migrations (also run by the test setup and the Docker image) |
 | `bun db:studio`                 | opens Drizzle Studio                                                         |
+
+`bun test` drops and recreates the test database on every run; see [testing.md](testing.md). Migrations in the Docker image run as `bun dist/db/migrate.js`.
 
 ## Factories & seeders
 

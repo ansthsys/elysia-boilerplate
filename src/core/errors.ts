@@ -41,6 +41,16 @@ export class ForbiddenError extends AppError {
 	}
 }
 
+/**
+ * Same 403, different meaning: the deployment disabled the capability, so no
+ * role would help. Clients can tell the two apart via `error.code`.
+ */
+export class FeatureDisabledError extends AppError {
+	constructor(message = 'This feature is disabled') {
+		super(403, ErrorCode.FEATURE_DISABLED, message)
+	}
+}
+
 export class NotFoundError extends AppError {
 	constructor(resource = 'Resource') {
 		super(404, ErrorCode.NOT_FOUND, `${resource} not found`)

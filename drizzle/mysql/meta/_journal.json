@@ -8,6 +8,27 @@
       "when": 1794892794875,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1795075072136,
+      "tag": "0001_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1795075457846,
+      "tag": "0002_post_published_on",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1795101748896,
+      "tag": "0003_mail_outbox",
+      "breakpoints": true
     }
   ]
 }

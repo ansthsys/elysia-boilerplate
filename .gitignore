@@ -2,13 +2,22 @@ node_modules
 dist
 .env
 .env.test
+.env.production
 .env.*.local
+/storage/
 *.log
-coverage
-data/
+/coverage
+/data/
 *.db
 *.db-shm
 *.db-wal
 openapi.json
 .DS_Store
 .idea
+
+# local AI taste/preferences, not part of the template
+.commandcode/taste/
+
+# local Vercel project link (vercel link)
+/.vercel/
+.env.local
