@@ -35,7 +35,7 @@ The template changed some contracts. Apply them in this order:
 7. **Docker.** The image now runs `dist/`; the migration command is `bun dist/db/migrate.js`. Rebuild the image and update release scripts.
 8. **Storage (optional).** Copy `src/lib/storage/` and `src/modules/files/` if the project needs uploads. They are independent of the rest; a project that does not need them can skip the table and migrations.
 9. **Mail queue (optional).** Copy `src/modules/mail/`, `src/emails/`, the `mail_outbox` schema and its migration, then:
-   - set `CRON_SECRET` and add the cron entry if deploying to Vercel;
+   - set `CRON_SECRET` and configure a scheduler (GitHub Actions/cron-job.org, or a Pro Vercel cron) that calls the drain endpoint;
    - keep the interval drain in `src/index.ts` for long-running servers;
    - switch `src/lib/auth.ts` from sending directly to `MailService.queue`.
 

@@ -106,7 +106,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 ```
 
-The endpoint requires `Authorization: Bearer <CRON_SECRET>`; without `CRON_SECRET` it returns 404 (it does not exist). A Vercel cron sends that header automatically when the variable is set. The endpoint is idempotent: rows are leased with a `lockId`, so overlapping drains do not send twice.
+The endpoint requires `Authorization: Bearer <CRON_SECRET>`; without `CRON_SECRET` it returns 404 (it does not exist). A Vercel cron (if you add one) sends that header automatically when the variable is set. The endpoint is idempotent: rows are leased with a `lockId`, so overlapping drains do not send twice.
 
 ## Retries and states
 
@@ -130,7 +130,7 @@ await MailService.drain({
 })
 ```
 
-`test/mail.test.ts` covers delivery, retry, the console formatting and the cron endpoint; `test/posts.test.ts` asserts the admin review email is queued.
+`test/mail.test.ts` covers delivery, retry, the console formatting and the drain endpoint; `test/posts.test.ts` asserts the admin review email is queued.
 
 ## Publishing a provider
 

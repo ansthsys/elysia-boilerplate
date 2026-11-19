@@ -79,7 +79,7 @@ Configure in the Vercel project:
 | `DATABASE_URL`       | PostgreSQL or MySQL over **TCP** (Neon, RDS, PlanetScale, ...) — **not `bun:sqlite`**       |
 | `STORAGE_DRIVER`     | `s3` (functions have no persistent filesystem)                                              |
 | `S3_*`               | bucket, region, endpoint and credentials                                                    |
-| `CRON_SECRET`        | required by the mail drain endpoint; Vercel cron sends it as a Bearer token                 |
+| `CRON_SECRET`        | required by the mail drain endpoint; your scheduler sends it as a Bearer token              |
 
 Notes:
 

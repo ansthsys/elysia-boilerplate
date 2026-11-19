@@ -178,20 +178,20 @@ Only **two** variables are required to boot: `DATABASE_URL` and `BETTER_AUTH_SEC
 
 ### Defaults at a glance
 
-| Capability                  | Default                                    | Change with                                                          |
-| --------------------------- | ------------------------------------------ | -------------------------------------------------------------------- |
-| Auth module                 | **on**                                     | `AUTH_ENABLED=false` → auth routes 404, guarded routes 401           |
-| Roles / admin plugin        | **on**                                     | `AUTH_ROLES_ENABLED=false` → role routes 403 `FEATURE_DISABLED`      |
-| Bearer sessions             | off                                        | `AUTH_BEARER_ENABLED=true`                                           |
-| Sign-up endpoint            | **on**                                     | `AUTH_SIGN_UP_ENABLED=false` (seeders and tests keep working)        |
-| Password reset              | **on**                                     | `AUTH_PASSWORD_RESET_ENABLED=false`                                  |
-| Email verification required | off                                        | `AUTH_REQUIRE_EMAIL_VERIFICATION=true`                               |
-| Rate limit                  | **on** (100/min per IP)                    | `RATE_LIMIT_ENABLED=false`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS` |
-| API docs                    | **on** in dev, **off** in production       | `OPENAPI_ENABLED=true`                                               |
-| Storage                     | `local` (`./storage`)                      | `STORAGE_DRIVER=s3` + `S3_*`                                         |
-| Email transport             | **console** (prints text + html)           | `RESEND_API_KEY` + `EMAIL_FROM`                                      |
-| Mail drain                  | interval 10s (server), cron 5 min (Vercel) | `CRON_SECRET` on Vercel                                              |
-| Database driver             | PostgreSQL                                 | one line in `src/db/dialect.ts`                                      |
+| Capability                  | Default                                         | Change with                                                          |
+| --------------------------- | ----------------------------------------------- | -------------------------------------------------------------------- |
+| Auth module                 | **on**                                          | `AUTH_ENABLED=false` → auth routes 404, guarded routes 401           |
+| Roles / admin plugin        | **on**                                          | `AUTH_ROLES_ENABLED=false` → role routes 403 `FEATURE_DISABLED`      |
+| Bearer sessions             | off                                             | `AUTH_BEARER_ENABLED=true`                                           |
+| Sign-up endpoint            | **on**                                          | `AUTH_SIGN_UP_ENABLED=false` (seeders and tests keep working)        |
+| Password reset              | **on**                                          | `AUTH_PASSWORD_RESET_ENABLED=false`                                  |
+| Email verification required | off                                             | `AUTH_REQUIRE_EMAIL_VERIFICATION=true`                               |
+| Rate limit                  | **on** (100/min per IP)                         | `RATE_LIMIT_ENABLED=false`, `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS` |
+| API docs                    | **on** in dev, **off** in production            | `OPENAPI_ENABLED=true`                                               |
+| Storage                     | `local` (`./storage`)                           | `STORAGE_DRIVER=s3` + `S3_*`                                         |
+| Email transport             | **console** (prints text + html)                | `RESEND_API_KEY` + `EMAIL_FROM`                                      |
+| Mail drain                  | interval 10s (server); scheduler for serverless | `CRON_SECRET` + scheduler URL                                        |
+| Database driver             | PostgreSQL                                      | one line in `src/db/dialect.ts`                                      |
 
 ### Feature switches
 
@@ -211,28 +211,28 @@ Switched-off endpoints disappear from `/docs` too, so the spec never advertises 
 
 ### Environment variables
 
-| Variable                                                             | Default                                        | Notes                                                                                                |
-| -------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                                           | `development`                                  | `production` hides 500 messages, enables secure cookies and disables docs by default.                |
-| `HOST` / `PORT`                                                      | `0.0.0.0` / `3000`                             |                                                                                                      |
-| `APP_NAME` / `APP_URL`                                               | `Elysia Boilerplate` / `http://localhost:3000` | `APP_URL` is used in emails and signed URLs.                                                         |
-| `LOG_LEVEL`                                                          | `info`                                         | pino level.                                                                                          |
-| `DATABASE_URL`                                                       | —                                              | **required**; must match `src/db/dialect.ts`.                                                        |
-| `CORS_ORIGINS`                                                       | `http://localhost:5173`                        | comma separated, exact origins.                                                                      |
-| `BETTER_AUTH_SECRET`                                                 | —                                              | **required**, 32+ chars; example values are rejected in production.                                  |
-| `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS`                            | `100` / `60000`                                |                                                                                                      |
-| `TRUST_PROXY`                                                        | `false`                                        | read the client IP from `X-Forwarded-For`; set `true` on Vercel or behind a proxy.                   |
-| `RESEND_API_KEY`                                                     | —                                              | without it, every email is printed to the log (text **and** html).                                   |
-| `EMAIL_FROM`                                                         | `Elysia Boilerplate <noreply@example.com>`     | sender used by the provider.                                                                         |
-| `CRON_SECRET`                                                        | —                                              | required by the internal mail drain (Vercel cron sends it as a Bearer token); empty hides the route. |
-| `STORAGE_DRIVER`                                                     | `local`                                        | `local` or `s3`.                                                                                     |
-| `STORAGE_LOCAL_PATH`                                                 | `./storage`                                    | root folder of the local driver.                                                                     |
-| `STORAGE_PUBLIC_BASE_URL`                                            | `APP_URL`                                      | base URL for local signed URLs.                                                                      |
-| `STORAGE_SIGNING_SECRET`                                             | `BETTER_AUTH_SECRET`                           | HMAC secret for local signed URLs.                                                                   |
-| `STORAGE_MAX_FILE_SIZE`                                              | `5m`                                           | upload limit, e.g. `5m`, `500k`.                                                                     |
-| `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | —                                              | required when `STORAGE_DRIVER=s3`.                                                                   |
-| `S3_ENDPOINT`                                                        | —                                              | set for R2/MinIO; empty for AWS.                                                                     |
-| `S3_VIRTUAL_HOSTED_STYLE`                                            | `false`                                        | path-style by default (MinIO and most compatible servers).                                           |
+| Variable                                                             | Default                                        | Notes                                                                                                   |
+| -------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                           | `development`                                  | `production` hides 500 messages, enables secure cookies and disables docs by default.                   |
+| `HOST` / `PORT`                                                      | `0.0.0.0` / `3000`                             |                                                                                                         |
+| `APP_NAME` / `APP_URL`                                               | `Elysia Boilerplate` / `http://localhost:3000` | `APP_URL` is used in emails and signed URLs.                                                            |
+| `LOG_LEVEL`                                                          | `info`                                         | pino level.                                                                                             |
+| `DATABASE_URL`                                                       | —                                              | **required**; must match `src/db/dialect.ts`.                                                           |
+| `CORS_ORIGINS`                                                       | `http://localhost:5173`                        | comma separated, exact origins.                                                                         |
+| `BETTER_AUTH_SECRET`                                                 | —                                              | **required**, 32+ chars; example values are rejected in production.                                     |
+| `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS`                            | `100` / `60000`                                |                                                                                                         |
+| `TRUST_PROXY`                                                        | `false`                                        | read the client IP from `X-Forwarded-For`; set `true` on Vercel or behind a proxy.                      |
+| `RESEND_API_KEY`                                                     | —                                              | without it, every email is printed to the log (text **and** html).                                      |
+| `EMAIL_FROM`                                                         | `Elysia Boilerplate <noreply@example.com>`     | sender used by the provider.                                                                            |
+| `CRON_SECRET`                                                        | —                                              | required by the internal mail drain (your scheduler sends it as a Bearer token); empty hides the route. |
+| `STORAGE_DRIVER`                                                     | `local`                                        | `local` or `s3`.                                                                                        |
+| `STORAGE_LOCAL_PATH`                                                 | `./storage`                                    | root folder of the local driver.                                                                        |
+| `STORAGE_PUBLIC_BASE_URL`                                            | `APP_URL`                                      | base URL for local signed URLs.                                                                         |
+| `STORAGE_SIGNING_SECRET`                                             | `BETTER_AUTH_SECRET`                           | HMAC secret for local signed URLs.                                                                      |
+| `STORAGE_MAX_FILE_SIZE`                                              | `5m`                                           | upload limit, e.g. `5m`, `500k`.                                                                        |
+| `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | —                                              | required when `STORAGE_DRIVER=s3`.                                                                      |
+| `S3_ENDPOINT`                                                        | —                                              | set for R2/MinIO; empty for AWS.                                                                        |
+| `S3_VIRTUAL_HOSTED_STYLE`                                            | `false`                                        | path-style by default (MinIO and most compatible servers).                                              |
 
 ## Storage
 
@@ -327,7 +327,7 @@ bun test
 
 - `test/setup.ts` **drops and recreates** the test database on every run. It refuses to run unless `NODE_ENV=test` and the database name looks disposable (`*_test`, in-memory SQLite, or `test*.db`).
 - Tests create their own rows; there is no shared fixture state.
-- Beyond routes: `conventions.test.ts` (architecture), `contracts.test.ts` (response ↔ model), `openapi.test.ts` + `error-contract.test.ts` (documented ↔ real errors), `mail.test.ts` (queue/retry/cron).
+- Beyond routes: `conventions.test.ts` (architecture), `contracts.test.ts` (response ↔ model), `openapi.test.ts` + `error-contract.test.ts` (documented ↔ real errors), `mail.test.ts` (queue/retry/drain endpoint).
 - The S3 driver test runs only when `S3_ENDPOINT` and `S3_BUCKET` are set.
 
 ## Deployment
@@ -403,15 +403,15 @@ The skills are linked for Claude Code (`.claude/skills`), Command Code (`.comman
 
 ## Troubleshooting
 
-| Symptom                                           | Fix                                                                                                       |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `bun test` refuses to run                         | Set `NODE_ENV=test` and a disposable `DATABASE_URL` (`*_test`).                                           |
-| `/docs` is 404                                    | Production disables it by default: `OPENAPI_ENABLED=true`.                                                |
-| Email arrives nowhere                             | No `RESEND_API_KEY` → check the terminal (full message). On Vercel, set `CRON_SECRET` and the cron entry. |
-| Vercel function fails to boot                     | Use PostgreSQL/MySQL (not `bun:sqlite`), `STORAGE_DRIVER=s3`, and `TRUST_PROXY=true`.                     |
-| `treaty<App>` type error                          | Two `elysia` copies: use a workspace or the `paths` override in [docs/client.md](docs/client.md).         |
-| `Cannot find module '#db/client'` in the frontend | Use `moduleResolution: "bundler"` (or `nodenext`).                                                        |
-| Upload rejected with 422                          | Check the MIME whitelist in `src/modules/files/model.ts` and `STORAGE_MAX_FILE_SIZE`.                     |
+| Symptom                                           | Fix                                                                                                                                     |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun test` refuses to run                         | Set `NODE_ENV=test` and a disposable `DATABASE_URL` (`*_test`).                                                                         |
+| `/docs` is 404                                    | Production disables it by default: `OPENAPI_ENABLED=true`.                                                                              |
+| Email arrives nowhere                             | No `RESEND_API_KEY` → check the terminal (full message). On serverless, set `CRON_SECRET` and call the drain endpoint from a scheduler. |
+| Vercel function fails to boot                     | Use PostgreSQL/MySQL (not `bun:sqlite`), `STORAGE_DRIVER=s3`, and `TRUST_PROXY=true`.                                                   |
+| `treaty<App>` type error                          | Two `elysia` copies: use a workspace or the `paths` override in [docs/client.md](docs/client.md).                                       |
+| `Cannot find module '#db/client'` in the frontend | Use `moduleResolution: "bundler"` (or `nodenext`).                                                                                      |
+| Upload rejected with 422                          | Check the MIME whitelist in `src/modules/files/model.ts` and `STORAGE_MAX_FILE_SIZE`.                                                   |
 
 ## Not included
 

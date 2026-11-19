@@ -28,8 +28,9 @@ await MailService.queue({ to, subject, text, html })
 
 - States: `pending → sending → sent`, or retry with backoff (10s, 20s, ... capped at 1h), then `failed` after 5 attempts.
 - Rows are leased with `lockId`; overlapping drains do not send twice.
+- The enqueue request is one `INSERT`; the drain is a separate invocation. Inline (`sendMailNow`) and `waitUntil` are escape hatches, not defaults: inline blocks the response, and `waitUntil` still bills the running function.
 - **Docker / conventional server**: interval in `src/index.ts` (10s) + one drain on shutdown.
-- **Vercel**: cron in `vercel.json` → `GET /api/internal/mail/drain` with `Authorization: Bearer <CRON_SECRET>`. Without `CRON_SECRET` the route is a 404.
+- **Serverless (Vercel, ...)**: call `GET /api/internal/mail/drain` from a scheduler (GitHub Actions, cron-job.org, or a Pro Vercel cron) with `Authorization: Bearer <CRON_SECRET>`. No cron is shipped in `vercel.json`: Hobby allows only daily and previews do not run crons. Without `CRON_SECRET` the route is a 404.
 
 ## No provider configured
 

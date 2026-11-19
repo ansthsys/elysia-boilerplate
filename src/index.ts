@@ -20,7 +20,7 @@ if (import.meta.main && !env.VERCEL) {
 	logger.info(`Server listening on http://${env.HOST}:${env.PORT} (docs: /docs)`)
 
 	// Long-running servers drain the outbox on an interval. On Vercel there is
-	// no timer: the cron job calls /api/internal/mail/drain instead.
+	// no timer: a scheduler calls /api/internal/mail/drain instead.
 	const drainTimer = setInterval(() => {
 		MailService.drain().catch((error) => logger.error({ err: error }, 'Mail drain failed'))
 	}, MAIL_DRAIN_INTERVAL_MS)

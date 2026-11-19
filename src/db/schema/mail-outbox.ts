@@ -3,8 +3,8 @@ import { column, index, table } from '../dialect'
 
 /**
  * Durable mail queue (outbox). A request only inserts a row, so sending never
- * blocks the response; a drain pass (interval on a long-running server, cron on
- * Vercel) delivers and retries it.
+ * blocks the response; a drain pass (interval on a long-running server, or an
+ * external scheduler on serverless) delivers and retries it.
  */
 export const mailOutbox = table(
 	'mail_outbox',

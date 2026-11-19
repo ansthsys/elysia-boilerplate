@@ -92,7 +92,7 @@ const EnvSchema = t.Object({
 
 	/**
 	 * Secret required by the internal mail-drain endpoint. Set it in production
-	 * (Vercel cron sends `Authorization: Bearer <CRON_SECRET>`); when empty the
+	 * (your scheduler sends `Authorization: Bearer <CRON_SECRET>`); when empty the
 	 * endpoint is hidden behind a 404.
 	 */
 	CRON_SECRET: t.Optional(t.String({ minLength: 16 })),

@@ -37,7 +37,7 @@ Elysia **v1.4** REST API (Bun), created from the **elysia-boilerplate** template
 - **Auth plugins.** Better Auth plugins live in `src/lib/auth-features.ts`: one entry per capability (`plugin` and/or `paths`). Never append to the array in `src/lib/auth.ts`, and never pre-register a plugin the project does not support — a runtime `enabled` flag still bundles the code and its tables.
 - **Feature switches.** Add the env var in `src/config/env.ts`, add the registry entry, and filter the route/path. Keep the server-side capability so seeders and tests still work.
 - **Storage.** Only through `storage.disk()` from `#lib/storage`. Never `Bun.write` or an S3 SDK call in a module; keys are driver-independent (`files/<id>`).
-- **Email.** Only through `MailService.queue` from `#modules/mail/service`; never call Resend from a feature. Templates live in `src/emails/` as pure `(data) => { subject, text, html }` functions with text required. Without `RESEND_API_KEY` the full text and html are logged.
+- **Email.** Only through `MailService.queue` from `#modules/mail/service`; never call Resend from a feature. Templates live in `src/emails/` as pure `(data) => { subject, text, html }` functions with text required. Without `RESEND_API_KEY` the full text and html are logged. On serverless, a scheduler calls the drain endpoint (no cron is shipped).
 - **Portable database code.**
   - Import table and column builders only from `#db/dialect`.
   - Use app-generated ids (`newId`).

@@ -7,8 +7,8 @@ import { MailModel } from './model'
 import { MailService } from './service'
 
 /**
- * Internal mail drain. Long-running servers use an interval instead; on Vercel
- * a cron job calls this route. Without `CRON_SECRET` the route does not exist
+ * Internal mail drain. Long-running servers use an interval instead; on
+ * serverless a scheduler calls this route. Without `CRON_SECRET` the route does not exist
  * (404), so it is safe to leave deployed.
  */
 export const mailModule = new Elysia({ prefix: '/api/internal/mail' }).use(errorHandler).get(

@@ -12,8 +12,8 @@ type Transport = (mail: Mail) => Promise<MailResult>
  * Mail queue. `queue` only inserts a row, so a request never waits for the
  * provider; `drain` delivers due rows and retries with exponential backoff.
  *
- * Long-running servers call `drain` on an interval (see `src/index.ts`); Vercel
- * calls the hidden `/api/internal/mail/drain` endpoint from a cron job.
+ * Long-running servers call `drain` on an interval (see `src/index.ts`); on
+ * serverless a scheduler calls the hidden `/api/internal/mail/drain` endpoint.
  */
 export abstract class MailService {
 	static queue(mail: Mail): Promise<string> {
