@@ -93,7 +93,7 @@ Two things CI does that are deliberately **not** npm scripts, to keep `package.j
 ## Project structure
 
 ```
-app.ts                    Vercel entry: imports the built bundle (Vercel only)
+server.ts                 Vercel entry: imports the built bundle (Vercel only)
 src/
 ├── index.ts              entry: export default app + Bun listener (skipped on Vercel)
 ├── app.ts                composition root, exports `type App`

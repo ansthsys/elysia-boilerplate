@@ -117,11 +117,13 @@ For Docker and conventional servers the budget still matters for image size and 
 
 ### Vercel entry
 
-Vercel's Elysia builder transpiles source files but does not rewrite the template's `#` subpath imports, so it cannot run `src/app.ts` directly. The root **`app.ts`** is the Vercel entry: it imports the self-contained `dist/index.js` produced by `bun run build` (the build runs before the function is built).
+Vercel looks for a file that imports `elysia` and default-exports the app (`app.ts`, `index.ts`, `server.ts`, or the same names under `src/`). `src/app.ts` matches, but the platform's Elysia builder transpiles files individually and does not rewrite the template's `#` subpath imports, so it cannot run the app from source.
 
-- `app.ts` is intentionally `@ts-nocheck`: the bundle has no declaration file, and this file is not part of the app or the tests.
-- Local development and tests keep using `src/index.ts`.
-- Do not import `app.ts` from application code.
+The root **`server.ts`** is the entry Vercel uses: it imports the self-contained `dist/index.js` produced by `bun run build` (the build runs before the function is built) and default-exports it. `src/index.ts` stays the Bun listener for local development and Docker.
+
+- `server.ts` is intentionally `@ts-nocheck`: the bundle has no declaration file.
+- Do not import `server.ts` from application code.
+- This is the only Vercel-specific file.
 
 ## Running more than one instance
 

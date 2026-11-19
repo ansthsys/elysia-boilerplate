@@ -38,7 +38,7 @@ The template changed some contracts. Apply them in this order:
    - set `CRON_SECRET` and configure a scheduler (GitHub Actions/cron-job.org, or a Pro Vercel cron) that calls the drain endpoint;
    - keep the interval drain in `src/index.ts` for long-running servers;
    - switch `src/lib/auth.ts` from sending directly to `MailService.queue`.
-10. **Vercel (optional).** Copy the root `app.ts` entry, remove `"types": ["bun"]` from `tsconfig.json` (Vercel's builder cannot resolve it), and keep `bun run build` as the build command. Ignore `/.vercel/` and `.env.local`.
+10. **Vercel (optional).** Copy the root `server.ts` entry, remove `"types": ["bun"]` from `tsconfig.json` (Vercel's builder cannot resolve it), and keep `bun run build` as the build command. Ignore `/.vercel/` and `.env.local`.
 
 Files to focus on: `src/shared/response.ts`, `src/shared/errors.ts`, `src/core/http.ts`, `src/plugins/{auth,error-handler,openapi}.ts`, `src/config/env.ts`, `src/db/dialects/*.ts`, `Dockerfile`.
 

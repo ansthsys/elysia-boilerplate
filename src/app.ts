@@ -48,4 +48,6 @@ export const app = new Elysia({ name: 'app' })
 	.use(filesModule)
 	.use(adminModule)
 
+export default app
+
 export type App = typeof app
