@@ -263,7 +263,7 @@ feature service → MailService.queue → mail_outbox (DB) → drain → Resend 
 
 - Templates live in `src/emails/` as pure `(data) => { subject, text, html }` functions.
 - Without `RESEND_API_KEY`, the console transport prints the whole message (text **and** html), so reset/verification links stay usable.
-- Drain triggers: interval on a long-running server; Vercel cron hits `/api/internal/mail/drain` with `CRON_SECRET`.
+- Drain triggers: interval on a long-running server; on serverless, an external scheduler calls `/api/internal/mail/drain` with `CRON_SECRET` (no cron is shipped by default).
 - Example: a member's post queues a review email to every admin; approval uses the existing `publishedOn` + `PATCH /api/posts/:id`.
 
 Full guide: [docs/email.md](docs/email.md).
@@ -332,12 +332,12 @@ bun test
 
 ## Deployment
 
-| Target                               | Status            | Notes                                                                                                                             |
-| ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Docker / long-running Bun server** | supported         | multi-stage image runs `dist/`; migrations are a separate release step                                                            |
-| **Single binary**                    | supported         | `bun build --compile`; mount a volume for `local` storage                                                                         |
-| **Vercel (Bun runtime)**             | supported         | default export + `vercel.json`; `s3` storage, Postgres/MySQL over TCP, `TRUST_PROXY=true`, daily cron drains mail (`CRON_SECRET`) |
-| **Cloudflare Workers / edge**        | **not supported** | workerd lacks Bun APIs; needs D1, R2, Web Crypto and an experimental adapter                                                      |
+| Target                               | Status            | Notes                                                                                                                                  |
+| ------------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Docker / long-running Bun server** | supported         | multi-stage image runs `dist/`; migrations are a separate release step                                                                 |
+| **Single binary**                    | supported         | `bun build --compile`; mount a volume for `local` storage                                                                              |
+| **Vercel (Bun runtime)**             | supported         | default export + `vercel.json`; `s3` storage, Postgres/MySQL over TCP, `TRUST_PROXY=true`, mail drained by a scheduler (`CRON_SECRET`) |
+| **Cloudflare Workers / edge**        | **not supported** | workerd lacks Bun APIs; needs D1, R2, Web Crypto and an experimental adapter                                                           |
 
 ```bash
 docker build -t api .

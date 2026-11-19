@@ -68,16 +68,45 @@ The template layer is a pure function, so switching is contained: replace each `
 
 The email links to `${APP_URL}/api/posts/<id>`; point that template field at your own admin UI when you build one.
 
-## Draining the queue
+## Delivery model and cost
 
-| Target                           | Trigger                                                                       |
-| -------------------------------- | ----------------------------------------------------------------------------- |
-| Docker / conventional Bun server | `setInterval` in `src/index.ts` (every 10s), plus one final drain on shutdown |
-| Vercel                           | `vercel.json` cron: `GET /api/internal/mail/drain`, daily at 03:00 by default |
+`MailService.queue()` only inserts a row. The request pays for one small `INSERT` and returns; delivery happens in a **separate drain invocation**.
 
-The endpoint requires `Authorization: Bearer <CRON_SECRET>`; without `CRON_SECRET` it returns 404 (it does not exist). Vercel sends that header automatically when `CRON_SECRET` is set in the project.
+| Target                           | Drain trigger                                                                                               |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Docker / conventional Bun server | `setInterval` in `src/index.ts` (every 10s), plus one final drain on shutdown                               |
+| Vercel / other serverless        | call `GET /api/internal/mail/drain` from a scheduler (GitHub Actions, cron-job.org, a Pro Vercel cron, ...) |
 
-**Hobby accounts require a daily cron** — Vercel rejects any expression that runs more often. Pro and Enterprise can lower it (for example `*/5 * * * *`) for faster delivery. On Hobby, use an external scheduler (GitHub Actions, cron-job.org, ...) that calls the same endpoint with the secret if you need lower latency. The endpoint is idempotent: rows are leased with a `lockId`, so overlapping drains do not send twice.
+`vercel.json` ships **no `crons` entry**: Hobby accounts reject anything more than once per day, and Vercel crons never run on preview deployments. Scheduling is a deployment decision, not a template default.
+
+Why not inline or `waitUntil`:
+
+- **Inline (`await sendMailNow`)** — the request waits for the provider, like Laravel's `Mail::send()`. Correct, but the invocation (and its cost) grows by the provider round-trip.
+- **`waitUntil`** — the response returns earlier, but the function keeps running and is still billed; it can also be cut off. It improves latency, not cost.
+- **External drain** — the enqueue request stays minimal, and draining runs as its own invocation that can batch many emails. Cheapest and portable across platforms.
+
+Latency is therefore "until the next drain" (for example, every 5 minutes). That is fine for notifications and usually for password reset. If a flow truly requires instant delivery, call `sendMailNow` explicitly and accept the wait — that is the documented escape hatch, not the default.
+
+Example scheduler (GitHub Actions; minimum 5 minutes, may be delayed):
+
+```yaml
+name: mail-drain
+on:
+  schedule: [{ cron: "*/5 * * * *" }]
+  workflow_dispatch:
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -fsS "$API_URL/api/internal/mail/drain" \
+            -H "Authorization: Bearer $CRON_SECRET"
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+```
+
+The endpoint requires `Authorization: Bearer <CRON_SECRET>`; without `CRON_SECRET` it returns 404 (it does not exist). A Vercel cron sends that header automatically when the variable is set. The endpoint is idempotent: rows are leased with a `lockId`, so overlapping drains do not send twice.
 
 ## Retries and states
 

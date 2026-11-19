@@ -17,7 +17,7 @@ Made the template answer the questions a real project asked: date columns, per-s
 ### Added
 
 - **Email queue (outbox)**: `mail_outbox` table, `MailService.queue`/`drain` (`src/modules/mail/`), retries with backoff, lease-based claiming and a hidden drain endpoint (`/api/internal/mail/drain`, `CRON_SECRET`).
-  - Long-running servers drain on an interval; Vercel drains from the daily cron entry in `vercel.json` (Hobby limit; an external scheduler can call the endpoint for lower latency).
+  - Long-running servers drain on an interval; serverless deployments call `GET /api/internal/mail/drain` from any scheduler (`CRON_SECRET`). No cron is shipped in `vercel.json`: Hobby allows only daily and previews do not run crons.
   - Feature example: a member's post queues a review email to every admin (`src/emails/post-pending-review.ts`); approval uses the existing `publishedOn` + `PATCH /api/posts/:id`.
   - Console transport prints the full message (text **and** html) when `RESEND_API_KEY` is missing, and logs the payload when the provider fails.
   - Migrations: `drizzle/*/0003_mail_outbox.sql`.
